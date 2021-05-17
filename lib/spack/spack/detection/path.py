@@ -10,10 +10,12 @@ import os
 import os.path
 import re
 import sys
+import subprocess
 
 import llnl.util.filesystem
 import llnl.util.tty
 
+import spack.operating_systems.windows_os as winOs
 import spack.util.environment
 
 from .common import (
@@ -40,6 +42,17 @@ def executables_in_path(path_hints=None):
     """
     path_hints = path_hints or spack.util.environment.get_path('PATH')
     search_paths = llnl.util.filesystem.search_paths_for_executables(*path_hints)
+    if sys.platform == 'win32':
+      msvcPaths = winOs.WindowsOs.vsInstallPaths
+      msvcCMakePaths = [os.path.join(path, "Common7", "IDE", "CommonExtensions", "Microsoft", "CMake", "CMake", "bin")
+                   for path in msvcPaths]
+      [path_hints.insert(0, path) for path in msvcCMakePaths]
+      msvcNinjaPaths = [os.path.join(path, "Common7", "IDE", "CommonExtensions", "Microsoft", "CMake", "Ninja")
+                   for path in msvcPaths]
+      [path_hints.insert(0, path) for path in msvcNinjaPaths]
+
+    search_paths = llnl.util.filesystem.search_paths_for_executables(
+        *path_hints)
 
     path_to_exe = {}
     # Reverse order of search directories so that an exe in the first PATH
