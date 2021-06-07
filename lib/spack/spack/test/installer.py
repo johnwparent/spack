@@ -5,10 +5,10 @@
 
 import os
 import shutil
+import sys
 
 import py
 import pytest
-import sys
 
 import llnl.util.filesystem as fs
 import llnl.util.lock as ulk
@@ -405,7 +405,8 @@ def test_ensure_locked_new_lock(
         assert lock._writes == writes
 
 
-def test_ensure_locked_new_warn(install_mockery, monkeypatch, tmpdir, capsys, win_locks):
+def test_ensure_locked_new_warn(install_mockery, monkeypatch, tmpdir,
+                                capsys, win_locks):
     orig_pl = spack.database.Database.prefix_lock
 
     def _pl(db, spec, timeout):

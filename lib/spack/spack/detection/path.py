@@ -74,7 +74,7 @@ def by_executable(packages_to_check, path_hints=None):
         if hasattr(pkg, 'executables'):
             for exe in pkg.executables:
                 if sys.platform == 'win32':
-                    exe = exe.replace('$', '\.exe$')
+                    exe = exe.replace('$', r'\.exe$')
                 exe_pattern_to_pkgs[exe].append(pkg)
 
     pkg_to_found_exes = collections.defaultdict(set)
