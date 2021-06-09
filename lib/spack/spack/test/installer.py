@@ -392,7 +392,7 @@ def test_ensure_locked_have(install_mockery, tmpdir, capsys):
     ('read', 1, 0),
     ('write', 0, 1)])
 def test_ensure_locked_new_lock(
-        install_mockery, tmpdir, lock_type, reads, writes, win_locks):
+        install_mockery, tmpdir, lock_type, reads, writes):
     pkg_id = 'a'
     const_arg = installer_args([pkg_id], {})
     installer = create_installer(const_arg)
@@ -405,8 +405,7 @@ def test_ensure_locked_new_lock(
         assert lock._writes == writes
 
 
-def test_ensure_locked_new_warn(install_mockery, monkeypatch, tmpdir,
-                                capsys, win_locks):
+def test_ensure_locked_new_warn(install_mockery, monkeypatch, tmpdir, capsys):
     orig_pl = spack.database.Database.prefix_lock
 
     def _pl(db, spec, timeout):
@@ -536,7 +535,7 @@ def test_dump_packages_deps_errs(install_mockery, tmpdir, monkeypatch, capsys):
     assert "Couldn't copy in provenance for cmake" in out
 
 
-def test_clear_failures_success(install_mockery, win_locks):
+def test_clear_failures_success(install_mockery):
     """Test the clear_failures happy path."""
 
     # Set up a test prefix failure lock
@@ -626,7 +625,7 @@ def test_check_deps_status_install_failure(install_mockery, monkeypatch):
         installer._check_deps_status(request)
 
 
-def test_check_deps_status_write_locked(install_mockery, monkeypatch, win_locks):
+def test_check_deps_status_write_locked(install_mockery, monkeypatch):
     const_arg = installer_args(['a'], {})
     installer = create_installer(const_arg)
     request = installer.build_requests[0]
@@ -638,7 +637,7 @@ def test_check_deps_status_write_locked(install_mockery, monkeypatch, win_locks)
         installer._check_deps_status(request)
 
 
-def test_check_deps_status_external(install_mockery, monkeypatch, win_locks):
+def test_check_deps_status_external(install_mockery, monkeypatch):
     const_arg = installer_args(['a'], {})
     installer = create_installer(const_arg)
     request = installer.build_requests[0]
@@ -649,7 +648,7 @@ def test_check_deps_status_external(install_mockery, monkeypatch, win_locks):
     assert list(installer.installed)[0].startswith('b')
 
 
-def test_check_deps_status_upstream(install_mockery, monkeypatch, win_locks):
+def test_check_deps_status_upstream(install_mockery, monkeypatch):
     const_arg = installer_args(['a'], {})
     installer = create_installer(const_arg)
     request = installer.build_requests[0]
@@ -892,7 +891,7 @@ def test_update_failed_no_dependent_task(install_mockery):
         assert installer.failed[task.pkg_id] is None
 
 
-def test_install_uninstalled_deps(install_mockery, monkeypatch, capsys, win_locks):
+def test_install_uninstalled_deps(install_mockery, monkeypatch, capsys):
     """Test install with uninstalled dependencies."""
     const_arg = installer_args(['dependent-install'], {})
     installer = create_installer(const_arg)
@@ -910,7 +909,7 @@ def test_install_uninstalled_deps(install_mockery, monkeypatch, capsys, win_lock
     assert 'Detected uninstalled dependencies for' in out
 
 
-def test_install_failed(install_mockery, monkeypatch, capsys, win_locks):
+def test_install_failed(install_mockery, monkeypatch, capsys):
     """Test install with failed install."""
     const_arg = installer_args(['b'], {})
     installer = create_installer(const_arg)
@@ -926,7 +925,7 @@ def test_install_failed(install_mockery, monkeypatch, capsys, win_locks):
     assert 'failed to install' in out
 
 
-def test_install_failed_not_fast(install_mockery, monkeypatch, capsys, win_locks):
+def test_install_failed_not_fast(install_mockery, monkeypatch, capsys):
     """Test install with failed install."""
     const_arg = installer_args(['a'], {'fail_fast': False})
     installer = create_installer(const_arg)
@@ -942,7 +941,7 @@ def test_install_failed_not_fast(install_mockery, monkeypatch, capsys, win_locks
     assert 'Skipping build of a' in out
 
 
-def test_install_fail_on_interrupt(install_mockery, monkeypatch, win_locks):
+def test_install_fail_on_interrupt(install_mockery, monkeypatch):
     """Test ctrl-c interrupted install."""
     spec_name = 'a'
     err_msg = 'mock keyboard interrupt for {0}'.format(spec_name)
@@ -966,7 +965,7 @@ def test_install_fail_on_interrupt(install_mockery, monkeypatch, win_locks):
     assert spec_name not in installer.installed
 
 
-def test_install_fail_single(install_mockery, monkeypatch, win_locks):
+def test_install_fail_single(install_mockery, monkeypatch):
     """Test expected results for failure of single package."""
     spec_name = 'a'
     err_msg = 'mock internal package build error for {0}'.format(spec_name)
@@ -993,7 +992,7 @@ def test_install_fail_single(install_mockery, monkeypatch, win_locks):
     assert spec_name not in installer.installed
 
 
-def test_install_fail_multi(install_mockery, monkeypatch, win_locks):
+def test_install_fail_multi(install_mockery, monkeypatch):
     """Test expected results for failure of multiple packages."""
     spec_name = 'c'
     err_msg = 'mock internal package build error'
@@ -1020,7 +1019,7 @@ def test_install_fail_multi(install_mockery, monkeypatch, win_locks):
     assert spec_name not in installer.installed
 
 
-def test_install_fail_fast_on_detect(install_mockery, monkeypatch, capsys, win_locks):
+def test_install_fail_fast_on_detect(install_mockery, monkeypatch, capsys):
     """Test fail_fast install when an install failure is detected."""
     const_arg = installer_args(['b'], {'fail_fast': False})
     const_arg.extend(installer_args(['c'], {'fail_fast': True}))
@@ -1051,7 +1050,7 @@ def _test_install_fail_fast_on_except_patch(installer, **kwargs):
     raise RuntimeError('mock patch failure')
 
 
-def test_install_fail_fast_on_except(install_mockery, monkeypatch, capsys, win_locks):
+def test_install_fail_fast_on_except(install_mockery, monkeypatch, capsys):
     """Test fail_fast install when an install failure results from an error."""
     const_arg = installer_args(['a'], {'fail_fast': True})
     installer = create_installer(const_arg)
@@ -1073,7 +1072,7 @@ def test_install_fail_fast_on_except(install_mockery, monkeypatch, capsys, win_l
     assert 'Skipping build of a' in out
 
 
-def test_install_lock_failures(install_mockery, monkeypatch, capfd, win_locks):
+def test_install_lock_failures(install_mockery, monkeypatch, capfd):
     """Cover basic install lock failure handling in a single pass."""
     def _requeued(installer, task):
         tty.msg('requeued {0}' .format(task.pkg.spec.name))
@@ -1096,7 +1095,7 @@ def test_install_lock_failures(install_mockery, monkeypatch, capfd, win_locks):
         assert exp in ln
 
 
-def test_install_lock_installed_requeue(install_mockery, monkeypatch, capfd, win_locks):
+def test_install_lock_installed_requeue(install_mockery, monkeypatch, capfd):
     """Cover basic install handling for installed package."""
     const_arg = installer_args(['b'], {})
     b, _ = const_arg[0]
@@ -1131,7 +1130,7 @@ def test_install_lock_installed_requeue(install_mockery, monkeypatch, capfd, win
         assert exp in ln
 
 
-def test_install_read_locked_requeue(install_mockery, monkeypatch, capfd, win_locks):
+def test_install_read_locked_requeue(install_mockery, monkeypatch, capfd):
     """Cover basic read lock handling for uninstalled package with requeue."""
     orig_fn = inst.PackageInstaller._ensure_locked
 
@@ -1170,7 +1169,8 @@ def test_install_read_locked_requeue(install_mockery, monkeypatch, capfd, win_lo
 
 
 
-def test_install_skip_patch(install_mockery, mock_fetch, win_locks):
+
+def test_install_skip_patch(install_mockery, mock_fetch):
     """Test the path skip_patch install path."""
     spec_name = 'b'
     const_arg = installer_args([spec_name],
