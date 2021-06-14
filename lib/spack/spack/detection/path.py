@@ -43,7 +43,7 @@ def executables_in_path(path_hints=None):
     path_hints = path_hints or spack.util.environment.get_path('PATH')
     search_paths = llnl.util.filesystem.search_paths_for_executables(*path_hints)
     if sys.platform == 'win32':
-        msvc_paths = winOs.WindowsOs.vsInstallPaths
+        msvc_paths = winOs.WindowsOs.vs_install_paths
         msvc_cmake_paths = [
             os.path.join(path, "Common7", "IDE", "CommonExtensions", "Microsoft",
                          "CMake", "CMake", "bin")
