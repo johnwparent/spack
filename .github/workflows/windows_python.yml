@@ -4,11 +4,15 @@ on:
   push:
     branches:
       - features/windows-support
-      - windows-ci
+      - windows-ci-build
   pull_request:
     branches:
       - features/windows-support
-      - windows-ci
+      - windows-ci-build
+defaults:
+  run:
+    shell:
+     powershell --command .\share\spack\qa\windows_test_setup.ps1 && {0}
 jobs:
   validate:
     runs-on: windows-latest
@@ -40,7 +44,6 @@ jobs:
         python -m pip install --upgrade pip six setuptools flake8 mypy>=0.800 black pywin32
     - name: Run style tests
       run: |
-          Invoke-Expression -Command .\share\spack\qa\windows_test_setup.ps1
           spack style
     - name: Verify license headers
       run: |
@@ -59,20 +62,16 @@ jobs:
           python -m pip install --upgrade pip six pywin32 setuptools codecov coverage
     - name: Unit Test llnl
       run: |
-        Invoke-Expression -Command .\share\spack\qa\windows_test_setup.ps1
         spack -h
         spack unit-test lib\spack\spack\test\llnl
     - name: Unit Test modules
       run: |
-        Invoke-Expression -Command .\share\spack\qa\windows_test_setup.ps1
         spack unit-test lib\spack\spack\test\modules
     - name: Unit Test util
       run: |
-        Invoke-Expression -Command .\share\spack\qa\windows_test_setup.ps1
         spack unit-test lib\spack\spack\test\util
     - name: Unit Test Common
       run: |
-        Invoke-Expression -Command .\share\spack\qa\windows_test_setup.ps1
         spack unit-test lib\spack\spack\test\abi.py
         spack unit-test lib\spack\spack\test\architecture.py
         spack unit-test lib\spack\spack\test\url_fetch.py
@@ -92,7 +91,6 @@ jobs:
           python -m pip install --upgrade pip six pywin32 setuptools codecov coverage
     - name: Unit Test Cmd
       run: |
-        Invoke-Expression -Command .\share\spack\qa\windows_test_setup.ps1
         spack unit-test lib\spack\spack\test\cmd
   buildtest:
     runs-on: windows-latest
@@ -108,6 +106,7 @@ jobs:
           python -m pip install --upgrade pip six pywin32 setuptools codecov coverage
     - name: Build Test
       run: |
-        Invoke-Expression -Command .\share\spack\qa\windows_test_setup.ps1
+        spack compiler find
+        echo F|xcopy .\spack\share\spack\qa\configuration\windows_config.yaml $env:USERPROFILE\.spack\windows\config.yaml
         spack external find cmake
         spack install abseil-cpp
