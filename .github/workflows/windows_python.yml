@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - features/windows-support
-      - windows-ci-build
   pull_request:
     branches:
       - features/windows-support
