@@ -59,6 +59,7 @@ def set_env_var(key, val):
     os.environ[key] = val
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_specs_staging(config):
     """Make sure we achieve the best possible staging for the following
 spec DAG::
@@ -118,6 +119,7 @@ and then 'd', 'b', and 'a' to be put in the next three stages, respectively.
         assert (spec_a_label in stages[3])
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_ci_generate_with_env(tmpdir, mutable_mock_env_path,
                               install_mockery, mock_packages, project_dir_env):
     """Make sure we can get a .gitlab-ci.yml from an environment file
@@ -213,6 +215,7 @@ def _validate_needs_graph(yaml_contents, needs_graph, artifacts):
                 break
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_ci_generate_bootstrap_gcc(tmpdir, mutable_mock_env_path,
                                    install_mockery,
                                    mock_packages, project_dir_env):
@@ -275,6 +278,7 @@ spack:
             _validate_needs_graph(yaml_contents, needs_graph, False)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_ci_generate_bootstrap_artifacts_buildcache(tmpdir,
                                                     mutable_mock_env_path,
                                                     install_mockery,
@@ -342,6 +346,7 @@ spack:
             _validate_needs_graph(yaml_contents, needs_graph, True)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_ci_generate_with_env_missing_section(tmpdir, mutable_mock_env_path,
                                               install_mockery,
                                               mock_packages, project_dir_env):
@@ -367,6 +372,7 @@ spack:
             assert(expect_out in output)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_ci_generate_with_cdash_token(tmpdir, mutable_mock_env_path,
                                       install_mockery,
                                       mock_packages, project_dir_env):
@@ -422,6 +428,7 @@ spack:
             assert(filecmp.cmp(orig_file, copy_to_file) is True)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_ci_generate_with_custom_scripts(tmpdir, mutable_mock_env_path,
                                          install_mockery,
                                          mock_packages, monkeypatch,
@@ -513,6 +520,7 @@ spack:
             assert(found_it)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_ci_generate_pkg_with_deps(tmpdir, mutable_mock_env_path,
                                    install_mockery,
                                    mock_packages, project_dir_env):
@@ -567,6 +575,7 @@ spack:
             assert('dependency-install' in found)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_ci_generate_for_pr_pipeline(tmpdir, mutable_mock_env_path,
                                      install_mockery,
                                      mock_packages, monkeypatch,
@@ -631,6 +640,7 @@ spack:
             assert(pipeline_vars['SPACK_PIPELINE_TYPE'] == 'spack_pull_request')
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_ci_generate_with_external_pkg(tmpdir, mutable_mock_env_path,
                                        install_mockery,
                                        mock_packages, monkeypatch,
@@ -675,6 +685,7 @@ spack:
         assert not any('externaltool' in key for key in yaml_contents)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_ci_rebuild(tmpdir, mutable_mock_env_path,
                     install_mockery, mock_packages, monkeypatch,
                     mock_gnupghome, mock_fetch, project_dir_env):
@@ -833,6 +844,7 @@ spack:
         env_cmd('deactivate')
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_ci_nothing_to_rebuild(tmpdir, mutable_mock_env_path,
                                install_mockery, mock_packages, monkeypatch,
                                mock_fetch, project_dir_env):
@@ -907,6 +919,7 @@ spack:
             env_cmd('deactivate')
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.disable_clean_stage_check
 def test_push_mirror_contents(tmpdir, mutable_mock_env_path,
                               install_mockery_mutable_config, mock_packages,
@@ -1058,6 +1071,7 @@ spack:
             assert(len(dl_dir_list) == 3)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_push_mirror_contents_exceptions(monkeypatch, capsys):
     def faked(env, spec_file=None, packages=None, add_spec=True,
               add_deps=True, output_location=os.getcwd(),
@@ -1078,6 +1092,7 @@ def test_push_mirror_contents_exceptions(monkeypatch, capsys):
     assert(expect_msg in std_out)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_ci_generate_override_runner_attrs(tmpdir, mutable_mock_env_path,
                                            install_mockery,
                                            mock_packages, monkeypatch,
@@ -1223,6 +1238,7 @@ spack:
                     assert(the_elt['after_script'][0] == 'post step one')
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_ci_generate_with_workarounds(tmpdir, mutable_mock_env_path,
                                       install_mockery,
                                       mock_packages, monkeypatch,
@@ -1274,6 +1290,7 @@ spack:
                 assert(found_one is True)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Not yet implemented on windows")
 @pytest.mark.disable_clean_stage_check
 def test_ci_rebuild_index(tmpdir, mutable_mock_env_path,
                           install_mockery, mock_packages, mock_fetch,
@@ -1326,6 +1343,7 @@ spack:
                 validate(index_object, db_idx_schema)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Not yet implemented on windows")
 def test_ci_generate_bootstrap_prune_dag(
         install_mockery_mutable_config, mock_packages, mock_fetch,
         mock_archive, mutable_config, monkeypatch, tmpdir,
@@ -1459,6 +1477,7 @@ spack:
             _validate_needs_graph(new_yaml_contents, needs_graph, False)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_ci_subcommands_without_mirror(tmpdir, mutable_mock_env_path,
                                        mock_packages,
                                        install_mockery, project_dir_env):
@@ -1497,6 +1516,7 @@ spack:
             assert(ex in output)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_ensure_only_one_temporary_storage():
     """Make sure 'gitlab-ci' section of env does not allow specification of
     both 'enable-artifacts-buildcache' and 'temporary-storage-url-prefix'."""
@@ -1537,6 +1557,7 @@ def test_ensure_only_one_temporary_storage():
     validate(yaml_obj, gitlab_ci_schema)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_ci_generate_temp_storage_url(tmpdir, mutable_mock_env_path,
                                       install_mockery,
                                       mock_packages, monkeypatch,
@@ -1593,6 +1614,7 @@ spack:
                 assert(cleanup_job['stage'] == stages[-2])
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Not yet implemented on windows")
 def test_ci_generate_read_broken_specs_url(tmpdir, mutable_mock_env_path,
                                            install_mockery,
                                            mock_packages, monkeypatch,
@@ -1650,6 +1672,7 @@ spack:
             assert(ex not in output)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_ci_reproduce(tmpdir, mutable_mock_env_path,
                       install_mockery, mock_packages, monkeypatch,
                       last_two_git_commits, project_dir_env, mock_binary_index):

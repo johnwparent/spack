@@ -8,6 +8,7 @@ import filecmp
 import os
 import re
 import shutil
+import sys
 import time
 
 import pytest
@@ -42,6 +43,7 @@ def noop_install(monkeypatch):
     monkeypatch.setattr(spack.installer.PackageInstaller, 'install', noop)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="All Fetchers Failed")
 def test_install_package_and_dependency(
         tmpdir, mock_packages, mock_archive, mock_fetch, config,
         install_mockery):
@@ -59,6 +61,7 @@ def test_install_package_and_dependency(
     assert 'errors="0"' in content
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="All Fetchers Failed")
 @pytest.mark.disable_clean_stage_check
 def test_install_runtests_notests(monkeypatch, mock_packages, install_mockery):
     def check(pkg):
@@ -67,6 +70,7 @@ def test_install_runtests_notests(monkeypatch, mock_packages, install_mockery):
     install('-v', 'dttop')
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="All Fetchers Failed")
 @pytest.mark.disable_clean_stage_check
 def test_install_runtests_root(monkeypatch, mock_packages, install_mockery):
     def check(pkg):
@@ -76,6 +80,7 @@ def test_install_runtests_root(monkeypatch, mock_packages, install_mockery):
     install('--test=root', 'dttop')
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="All Fetchers Failed")
 @pytest.mark.disable_clean_stage_check
 def test_install_runtests_all(monkeypatch, mock_packages, install_mockery):
     def check(pkg):
@@ -86,6 +91,7 @@ def test_install_runtests_all(monkeypatch, mock_packages, install_mockery):
     install('--run-tests', 'a')
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="All Fetchers Failed")
 def test_install_package_already_installed(
         tmpdir, mock_packages, mock_archive, mock_fetch, config,
         install_mockery):
@@ -107,6 +113,7 @@ def test_install_package_already_installed(
     assert len(skipped) == 2
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="All Fetchers Failed")
 @pytest.mark.parametrize('arguments,expected', [
     ([], spack.config.get('config:dirty')),  # default from config file
     (['--clean'], False),
@@ -119,6 +126,7 @@ def test_install_dirty_flag(arguments, expected):
     assert args.dirty == expected
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_package_output(tmpdir, capsys, install_mockery, mock_fetch):
     """
     Ensure output printed from pkgs is captured by output redirection.
@@ -140,6 +148,7 @@ def test_package_output(tmpdir, capsys, install_mockery, mock_fetch):
     assert "AFTER INSTALL" in out
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.disable_clean_stage_check
 def test_install_output_on_build_error(mock_packages, mock_archive, mock_fetch,
                                        config, install_mockery, capfd):
@@ -154,6 +163,7 @@ def test_install_output_on_build_error(mock_packages, mock_archive, mock_fetch,
     assert 'Installing build-error' in out
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.disable_clean_stage_check
 def test_install_output_on_python_error(
         mock_packages, mock_archive, mock_fetch, config, install_mockery):
@@ -163,6 +173,7 @@ def test_install_output_on_python_error(
     assert 'raise InstallError("Expected failure.")' in out
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.disable_clean_stage_check
 def test_install_with_source(
         mock_packages, mock_archive, mock_fetch, config, install_mockery):
@@ -175,6 +186,7 @@ def test_install_with_source(
                        os.path.join(src, 'configure'))
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.disable_clean_stage_check
 def test_show_log_on_error(mock_packages, mock_archive, mock_fetch,
                            config, install_mockery, capfd):
@@ -191,6 +203,7 @@ def test_show_log_on_error(mock_packages, mock_archive, mock_fetch,
     assert 'See build log for details:' in out
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_install_overwrite(
         mock_packages, mock_archive, mock_fetch, config, install_mockery
 ):
@@ -224,6 +237,7 @@ def test_install_overwrite(
     assert fs.hash_directory(spec.prefix, ignore=ignores) != bad_md5
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_install_overwrite_not_installed(
         mock_packages, mock_archive, mock_fetch, config, install_mockery,
 ):
@@ -236,7 +250,7 @@ def test_install_overwrite_not_installed(
     install('--overwrite', '-y', 'libdwarf')
     assert os.path.exists(spec.prefix)
 
-
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_install_commit(
         mock_git_version_info, install_mockery, mock_packages, monkeypatch):
     """
@@ -263,6 +277,7 @@ def test_install_commit(
     assert content == '[]'  # contents are weird for another test
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_install_overwrite_multiple(
         mock_packages, mock_archive, mock_fetch, config, install_mockery
 ):
@@ -320,6 +335,7 @@ def test_install_overwrite_multiple(
     assert cm_hash != bad_cmake_md5
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.usefixtures(
     'mock_packages', 'mock_archive', 'mock_fetch', 'config', 'install_mockery',
 )
@@ -329,6 +345,7 @@ def test_install_conflicts(conflict_spec):
         install(conflict_spec)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.usefixtures(
     'mock_packages', 'mock_archive', 'mock_fetch', 'config', 'install_mockery',
 )
@@ -338,6 +355,7 @@ def test_install_invalid_spec(invalid_spec):
         install(invalid_spec)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.usefixtures('noop_install', 'mock_packages', 'config')
 @pytest.mark.parametrize('spec,concretize,error_code', [
     (Spec('mpi'), False, 1),
@@ -370,6 +388,7 @@ def test_install_from_file(spec, concretize, error_code, tmpdir):
     assert err_msg in out
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.disable_clean_stage_check
 @pytest.mark.usefixtures(
     'mock_packages', 'mock_archive', 'mock_fetch', 'config', 'install_mockery'
@@ -403,6 +422,7 @@ def test_junit_output_with_failures(tmpdir, exc_typename, msg):
     assert msg in content
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.disable_clean_stage_check
 @pytest.mark.parametrize('exc_typename,msg', [
     ('RuntimeError', 'something weird happened'),
@@ -442,6 +462,7 @@ def test_junit_output_with_errors(
     assert 'error message="{0}"'.format(msg) in content
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.usefixtures('noop_install', 'mock_packages', 'config')
 @pytest.mark.parametrize('clispecs,filespecs', [
     [[],                  ['mpi']],
@@ -466,6 +487,7 @@ def test_install_mix_cli_and_files(clispecs, filespecs, tmpdir):
     assert install.returncode == 0
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_extra_files_are_archived(mock_packages, mock_archive, mock_fetch,
                                   config, install_mockery):
     s = Spec('archive-files')
@@ -485,6 +507,7 @@ def test_extra_files_are_archived(mock_packages, mock_archive, mock_fetch,
     assert os.path.exists(errors_txt)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.disable_clean_stage_check
 def test_cdash_report_concretization_error(tmpdir, mock_fetch, install_mockery,
                                            capfd, conflict_spec):
@@ -511,6 +534,7 @@ def test_cdash_report_concretization_error(tmpdir, mock_fetch, install_mockery,
             assert any(x in content for x in expected_messages)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.disable_clean_stage_check
 def test_cdash_upload_build_error(tmpdir, mock_fetch, install_mockery,
                                   capfd):
@@ -531,6 +555,7 @@ def test_cdash_upload_build_error(tmpdir, mock_fetch, install_mockery,
             assert '<Text>configure: error: in /path/to/some/file:</Text>' in content
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.disable_clean_stage_check
 def test_cdash_upload_clean_build(tmpdir, mock_fetch, install_mockery, capfd):
     # capfd interferes with Spack's capturing of e.g., Build.xml output
@@ -549,6 +574,7 @@ def test_cdash_upload_clean_build(tmpdir, mock_fetch, install_mockery, capfd):
             assert '<Text>' not in content
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.disable_clean_stage_check
 def test_cdash_upload_extra_params(tmpdir, mock_fetch, install_mockery, capfd):
     # capfd interferes with Spack's capture of e.g., Build.xml output
@@ -571,6 +597,7 @@ def test_cdash_upload_extra_params(tmpdir, mock_fetch, install_mockery, capfd):
             assert '-my_custom_track' in content
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.disable_clean_stage_check
 def test_cdash_buildstamp_param(tmpdir, mock_fetch, install_mockery, capfd):
     # capfd interferes with Spack's capture of e.g., Build.xml output
@@ -593,6 +620,7 @@ def test_cdash_buildstamp_param(tmpdir, mock_fetch, install_mockery, capfd):
             assert buildstamp in content
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.disable_clean_stage_check
 def test_cdash_install_from_spec_yaml(tmpdir, mock_fetch, install_mockery,
                                       capfd, mock_packages, mock_archive,
@@ -631,6 +659,7 @@ def test_cdash_install_from_spec_yaml(tmpdir, mock_fetch, install_mockery,
             assert 'a@' in install_command
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.disable_clean_stage_check
 def test_build_error_output(tmpdir, mock_fetch, install_mockery, capfd):
     with capfd.disabled():
@@ -645,6 +674,7 @@ def test_build_error_output(tmpdir, mock_fetch, install_mockery, capfd):
         assert 'configure: error: cannot run C compiled programs.' in msg
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.disable_clean_stage_check
 def test_build_warning_output(tmpdir, mock_fetch, install_mockery, capfd):
     with capfd.disabled():
@@ -659,6 +689,7 @@ def test_build_warning_output(tmpdir, mock_fetch, install_mockery, capfd):
         assert 'foo.c:89: warning: some weird warning!' in msg
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_cache_only_fails(tmpdir, mock_fetch, install_mockery, capfd):
     # libelf from cache fails to install, which automatically removes the
     # the libdwarf build task
@@ -675,6 +706,7 @@ def test_cache_only_fails(tmpdir, mock_fetch, install_mockery, capfd):
     assert 'libdwarf' in failure_lock_prefixes
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_install_only_dependencies(tmpdir, mock_fetch, install_mockery):
     dep = Spec('dependency-install').concretized()
     root = Spec('dependent-install').concretized()
@@ -685,6 +717,7 @@ def test_install_only_dependencies(tmpdir, mock_fetch, install_mockery):
     assert not os.path.exists(root.prefix)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_install_only_package(tmpdir, mock_fetch, install_mockery, capfd):
     msg = ''
     with capfd.disabled():
@@ -697,6 +730,7 @@ def test_install_only_package(tmpdir, mock_fetch, install_mockery, capfd):
     assert '1 uninstalled dependency' in msg
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_install_deps_then_package(tmpdir, mock_fetch, install_mockery):
     dep = Spec('dependency-install').concretized()
     root = Spec('dependent-install').concretized()
@@ -709,6 +743,7 @@ def test_install_deps_then_package(tmpdir, mock_fetch, install_mockery):
     assert os.path.exists(root.prefix)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.regression('12002')
 def test_install_only_dependencies_in_env(tmpdir, mock_fetch, install_mockery,
                                           mutable_mock_env_path):
@@ -724,6 +759,7 @@ def test_install_only_dependencies_in_env(tmpdir, mock_fetch, install_mockery,
         assert not os.path.exists(root.prefix)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.regression('12002')
 def test_install_only_dependencies_of_all_in_env(
     tmpdir, mock_fetch, install_mockery, mutable_mock_env_path
@@ -744,6 +780,7 @@ def test_install_only_dependencies_of_all_in_env(
                 assert os.path.exists(dep.prefix)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_install_no_add_in_env(tmpdir, mock_fetch, install_mockery,
                                mutable_mock_env_path):
     # To test behavior of --no-add option, we create the following environment:
@@ -850,6 +887,7 @@ def test_install_no_add_in_env(tmpdir, mock_fetch, install_mockery,
         assert(not any([s.name == 'bowtie' for s in e.uninstalled_specs()]))
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_install_help_does_not_show_cdash_options(capsys):
     """
     Make sure `spack install --help` does not describe CDash arguments
@@ -860,6 +898,7 @@ def test_install_help_does_not_show_cdash_options(capsys):
         assert 'CDash URL' not in captured.out
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_install_help_cdash(capsys):
     """Make sure `spack install --help-cdash` describes CDash arguments"""
     install_cmd = SpackCommand('install')
@@ -867,6 +906,7 @@ def test_install_help_cdash(capsys):
     assert 'CDash URL' in out
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.disable_clean_stage_check
 def test_cdash_auth_token(tmpdir, install_mockery, capfd):
     # capfd interferes with Spack's capturing
@@ -881,6 +921,7 @@ def test_cdash_auth_token(tmpdir, install_mockery, capfd):
             assert 'Using CDash auth token from environment' in out
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.disable_clean_stage_check
 def test_cdash_configure_warning(tmpdir, mock_fetch, install_mockery, capfd):
     # capfd interferes with Spack's capturing of e.g., Build.xml output
@@ -900,6 +941,7 @@ def test_cdash_configure_warning(tmpdir, mock_fetch, install_mockery, capfd):
             assert 'foo: No such file or directory' in content
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_compiler_bootstrap(
         install_mockery_mutable_config, mock_packages, mock_fetch,
         mock_archive, mutable_config, monkeypatch):
@@ -912,6 +954,7 @@ def test_compiler_bootstrap(
     install('a%gcc@2.0')
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_compiler_bootstrap_from_binary_mirror(
         install_mockery_mutable_config, mock_packages, mock_fetch,
         mock_archive, mutable_config, monkeypatch, tmpdir):
@@ -950,6 +993,7 @@ def test_compiler_bootstrap_from_binary_mirror(
     install('--no-cache', '--only', 'package', 'b%gcc@10.2.0')
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 @pytest.mark.regression('16221')
 def test_compiler_bootstrap_already_installed(
         install_mockery_mutable_config, mock_packages, mock_fetch,
@@ -965,6 +1009,7 @@ def test_compiler_bootstrap_already_installed(
     install('a%gcc@2.0')
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="All Fetchers Failed")
 def test_install_fails_no_args(tmpdir):
     # ensure no spack.yaml in directory
     with tmpdir.as_cwd():
@@ -976,6 +1021,7 @@ def test_install_fails_no_args(tmpdir):
     assert 'using the `spack.yaml` in this directory' not in output
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="All Fetchers Failed")
 def test_install_fails_no_args_suggests_env_activation(tmpdir):
     # ensure spack.yaml in directory
     tmpdir.ensure('spack.yaml')
@@ -1001,6 +1047,7 @@ def fake_full_hash(spec):
     return default_full_hash(spec)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="All Fetchers Failed")
 def test_cache_install_full_hash_match(
         install_mockery_mutable_config, mock_packages, mock_fetch,
         mock_archive, mutable_config, monkeypatch, tmpdir):
@@ -1059,6 +1106,7 @@ def test_cache_install_full_hash_match(
     shutil.rmtree(mirror_dir.strpath)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_install_env_with_tests_all(tmpdir, mock_packages, mock_fetch,
                                     install_mockery, mutable_mock_env_path):
     env('create', 'test')
@@ -1069,6 +1117,7 @@ def test_install_env_with_tests_all(tmpdir, mock_packages, mock_fetch,
         assert os.path.exists(test_dep.prefix)
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason="Error on Win")
 def test_install_env_with_tests_root(tmpdir, mock_packages, mock_fetch,
                                      install_mockery, mutable_mock_env_path):
     env('create', 'test')

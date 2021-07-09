@@ -15,6 +15,7 @@ import spack.cmd
 import spack.cmd.common.arguments
 import spack.detection
 import spack.error
+import spack.operating_systems.windows_os as winOs
 import spack.util.environment
 
 description = "manage external packages in Spack configuration"
