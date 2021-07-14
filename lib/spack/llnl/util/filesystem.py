@@ -834,7 +834,7 @@ def ancestor(dir, n=1):
     parent = os.path.abspath(dir)
     for i in range(n):
         parent = os.path.dirname(parent)
-    return parent
+    return parent.replace("\\", "/")
 
 
 def get_single_file(directory):
@@ -1176,11 +1176,16 @@ def _find_recursive(root, search_files):
 
     # Make the path absolute to have os.walk also return an absolute path
     root = os.path.abspath(root)
-
+    if sys.platform == "win32":
+        root = root.replace("\\", "/")
     for path, _, list_files in os.walk(root):
+        if sys.platform == "win32":
+            path = path.replace("\\", "/")
         for search_file in search_files:
             matches = glob.glob(os.path.join(path, search_file))
             matches = [os.path.join(path, x) for x in matches]
+            if sys.platform == "win32":
+                matches = [x.replace("\\", "/") for x in matches]
             found_files[search_file].extend(matches)
 
     answer = []
@@ -1197,10 +1202,14 @@ def _find_non_recursive(root, search_files):
 
     # Make the path absolute to have absolute path returned
     root = os.path.abspath(root)
+    if sys.platform == "win32":
+        root = root.replace("\\", "/")
 
     for search_file in search_files:
         matches = glob.glob(os.path.join(root, search_file))
         matches = [os.path.join(root, x) for x in matches]
+        if sys.platform == "win32":
+            matches = [x.replace("\\", "/") for x in matches]
         found_files[search_file].extend(matches)
 
     answer = []
