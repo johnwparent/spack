@@ -23,6 +23,8 @@ class CmakeBootstrap(Package):
 
     version('3.21.1', sha256='9fba6df0b89be0dc0377f2e77ca272b3f8c38691fe237699de275ea0c2254242', url='https://github.com/Kitware/CMake/releases/download/v3.21.1/cmake-3.21.1-windows-x86_64.zip', expand=True)
 
+    provides('cmake')
+
     @classmethod
     def determine_version(cls, exe):
         output = Executable(exe)('--version', output=str, error=str)
