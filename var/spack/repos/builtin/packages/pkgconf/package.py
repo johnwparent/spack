@@ -3,11 +3,12 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
+from lib.spack.spack.build_systems.meson import MesonPackage
 from lib.spack.spack.build_systems.cmake import CMakePackage
 from spack import *
 
 
-class Pkgconf(CMakePackage):
+class Pkgconf(MesonPackage):
     """pkgconf is a program which helps to configure compiler and linker
     flags for development frameworks. It is similar to pkg-config from
     freedesktop.org, providing additional functionality while also
