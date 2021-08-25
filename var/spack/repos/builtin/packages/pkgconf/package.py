@@ -3,10 +3,11 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
+from lib.spack.spack.build_systems.cmake import CMakePackage
 from spack import *
 
 
-class Pkgconf(AutotoolsPackage):
+class Pkgconf(CMakePackage):
     """pkgconf is a program which helps to configure compiler and linker
     flags for development frameworks. It is similar to pkg-config from
     freedesktop.org, providing additional functionality while also
@@ -69,3 +70,6 @@ class Pkgconf(AutotoolsPackage):
         symlink('pkgconf', '{0}/pkg-config'.format(self.prefix.bin))
         symlink('pkgconf.1',
                 '{0}/pkg-config.1'.format(self.prefix.share.man.man1))
+
+    def std_cmake_args(self):
+        return super().std_cmake_args
