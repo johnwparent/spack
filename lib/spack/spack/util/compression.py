@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
 import os
+import sys
 import re
 from itertools import product
 
@@ -59,6 +60,20 @@ def _unzip(archive_file):
         return unzip
 
 
+def tar(archive_file):
+    import tarfile
+    outfile = os.path.basename(archive_file)
+    remnant = os.path.join(os.getcwd(), outfile)
+    _, ext = os.path.splitext(archive_file)
+    tar = tarfile.open(archive_file)
+    tar.extractall()
+    tar.close()
+    if sys.platform == "win32":
+        if os.path.exists(remnant):
+            os.remove(remnant)
+    return outfile
+
+
 def decompressor_for(path, extension=None):
     """Get the appropriate decompressor for a path."""
     if ((extension and re.match(r'\.?zip$', extension)) or
@@ -69,8 +84,8 @@ def decompressor_for(path, extension=None):
     if extension and re.match(r'bz2', extension):
         bunzip2 = which('bunzip2', required=True)
         return bunzip2
-    tar = which('tar', required=True)
-    tar.add_default_arg('-oxf')
+    # tar = which('tar', required=True)
+    # tar.add_default_arg('-oxjf')
     return tar
 
 
