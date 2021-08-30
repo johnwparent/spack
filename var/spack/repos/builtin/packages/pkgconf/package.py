@@ -3,8 +3,8 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
-from lib.spack.spack.build_systems.meson import MesonPackage
-from lib.spack.spack.build_systems.cmake import CMakePackage
+import os
+
 from spack import *
 
 
@@ -30,6 +30,8 @@ class Pkgconf(MesonPackage):
     version('1.3.8',  sha256='fc06f058e6905435481f649865ca51000192c91808f307b1053ca5e859cb1488')
 
     provides('pkgconfig')
+
+    depends_on('meson@0.47:')
 
     # https://github.com/spack/spack/issues/11704
     patch('nvhpc.patch', when='@1.7.3%nvhpc')
@@ -68,9 +70,14 @@ class Pkgconf(MesonPackage):
 
     @run_after('install')
     def link_pkg_config(self):
-        symlink('pkgconf', '{0}/pkg-config'.format(self.prefix.bin))
+        exe = os.path.join(self.build_directory, 'pkgconf')
+        abtr = os.path.join(self.prefix.bin,'pkg-config')
+        if os.name == 'nt':
+            exe+='.exe'
+            abtr+='.exe'
+        symlink(exe, abtr)
         symlink('pkgconf.1',
                 '{0}/pkg-config.1'.format(self.prefix.share.man.man1))
 
-    def std_cmake_args(self):
-        return super().std_cmake_args
+    def meson_args(self):
+        return ["-Dtests=false"]

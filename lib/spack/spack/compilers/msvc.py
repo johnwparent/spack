@@ -92,6 +92,13 @@ class Msvc(Compiler):
                 env.set_path('PATH', int_env['path'].split(';'))
             env.set_path('INCLUDE', int_env.get('include', '').split(';'))
             env.set_path('LIB', int_env.get('lib', '').split(';'))
+
+            # Currently env:CC/env:CXX points to a directory w/ MSVC, this breaks at least Meson
+            # quick fix: remove variable from env
+            # TODO(john p): figure out what needs to be done for an env/cc file for msvc
+            # presumably a .bat file or some other executable esque to invoke compiler info
+            env.unset('CC')
+            env.unset('CXX')
         else:
             # Should not this be an exception?
             print("Cannot pull msvc compiler information in Python 2.6 or below")
