@@ -6,10 +6,12 @@ from .cray import Cray
 from .darwin import Darwin
 from .linux import Linux
 from .test import Test
+from .windows import Windows
 
 __all__ = [
     'Cray',
     'Darwin',
     'Linux',
-    'Test'
+    'Test',
+    'Windows'
 ]
