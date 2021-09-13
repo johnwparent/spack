@@ -515,7 +515,7 @@ class Environment(object):
         self.with_view = with_view
         self.keep_relative = keep_relative
 
-        self.txlock = lk.LockFactory.lock(self._transaction_lock_path)
+        self.txlock = lk.Lock(self._transaction_lock_path)
 
         # This attribute will be set properly from configuration
         # during concretization
