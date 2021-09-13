@@ -7,10 +7,11 @@ import llnl.util.lang
 from .cray import Cray
 from .darwin import Darwin
 from .linux import Linux
+from .windows import WindowsOs
 from .test import Test
 
 #: List of all the platform classes known to Spack
-platforms = [Cray, Darwin, Linux, Test]
+platforms = [Cray, Darwin, Linux, WindowsOs, Test]
 
 
 @llnl.util.lang.memoized
