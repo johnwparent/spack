@@ -86,6 +86,15 @@ class OpenFileTracker(object):
         """Create a new ``OpenFileTracker``."""
         self._descriptors = {}  # type: Dict[Tuple[int, int], OpenFile]
 
+    def __contains__(self, path):
+        stat, pid = self.__get_key_info__(path)
+        return (stat.st_ino, pid) in self._descriptors
+
+    def __get_key_info__(self, path):
+        stat = os.stat(path)
+        pid = os.getpid()
+        return stat, pid
+
     def get_fh(self, path):
         """Get a filehandle for a lockfile.
 
@@ -105,7 +114,7 @@ class OpenFileTracker(object):
 
         try:
             # see whether we've seen this inode/pid before
-            stat = os.stat(path)
+            stat, pid = self.__get_key_info__(path)
             key = (stat.st_ino, pid)
             open_file = self._descriptors.get(key)
 
@@ -163,6 +172,25 @@ class OpenFileTracker(object):
 #: from opening the sam file many times for different byte range locks
 file_tracker = OpenFileTracker()
 
+class OpenLockTracker(object):
+    __lock_status = {}
+    @staticmethod
+    def add_lock(lock, status):
+        OpenLockTracker.__lock_status[lock.path] = status
+
+    @staticmethod
+    def remove_lock(lock):
+        if lock.path not in file_tracker:
+            OpenLockTracker.__lock_status.pop(lock.path)
+        else:
+            OpenLockTracker.__lock_status[lock.path] = "unlocked"
+
+    @staticmethod
+    def status(lock):
+        try:
+            return OpenLockTracker.__lock_status[lock.path]
+        except KeyError:
+            return None
 
 def _attempts_str(wait_time, nattempts):
     # Don't print anything if we succeeded on the first try
@@ -238,11 +266,15 @@ class Lock(object):
         self._writes = 0
 
         # byte range parameters
-        self._start = start
-        self._length = length
+        self._start = start if not is_windows else 0
+        self._length = length if not is_windows else 0
 
         # enable debug mode
         self.debug = debug
+
+        if self.debug and is_windows and (length != 0 or start != 0):
+            self._log_debug("Locking ranges unsupported on Windows.\n\
+                            All bytes will be locked from 0 instead")
 
         # optional debug description
         self.desc = ' ({0})'.format(desc) if desc else ''
@@ -320,6 +352,12 @@ class Lock(object):
         timeout = 'timeout={0}'.format(self.default_timeout)
         activity = '#reads={0}, #writes={1}'.format(self._reads, self._writes)
         return '({0}, {1}, {2})'.format(location, timeout, activity)
+
+    def __bool__(self):
+        return bool(self._current_lock)
+
+    def __nonzero__(self):
+        return bool(self)
 
     @lock_checking
     def _lock(self, op, timeout=None):
@@ -461,16 +499,30 @@ class Lock(object):
         self._file.flush()
         os.fsync(self._file.fileno())
 
-    def _partial_unlock(self):
+    def __partial_switch(self, status, next_lock):
+        if status is None or status == 'unlocked':
+            return False
+        if status == self._current_lock:
+            return True
+        if is_windows:
+            self._partial_unlock(lock=file_tracker.get_fh(self.path))
+        wait_time, nattempts = self._lock(next_lock)
+        # Log if acquired, which includes counts when verbose
+        self._log_acquired("%s LOCK" % self.lock_type[status].capitalize(),\
+        wait_time, nattempts)
+        return True
+
+    def _partial_unlock(self, lock = None):
         """Releases a lock using POSIX locks (``fcntl.lockf``)
 
         Releases the lock regardless of mode. Note that read locks may
         be masquerading as write locks, but this removes either.
 
         """
-
+        if not lock:
+            lock = self._file
         if is_windows:
-            hfile = win32file._get_osfhandle(self._file.fileno())
+            hfile = win32file._get_osfhandle(lock.fileno())
             win32file.UnlockFileEx(hfile,
                                    0,
                                    0xffff0000,
@@ -487,9 +539,11 @@ class Lock(object):
 
         Reset all lock attributes to initial states
         """
-        self._partial_unlock()
+        if OpenLockTracker.status(self) != 'unlocked':
+            self._partial_unlock()
         file_tracker.release_fh(self.path)
-
+        OpenLockTracker.remove_lock(self)
+        self._current_lock = None
         self._file = None
         self._file_mode = ""
         self._reads = 0
@@ -510,11 +564,13 @@ class Lock(object):
 
         if self._reads == 0 and self._writes == 0:
             # can raise LockError.
-            wait_time, nattempts = self._lock(self.LOCK_SH, timeout=timeout)
+            if not self.__partial_switch(OpenLockTracker.status(self), self.LOCK_SH):
+                wait_time, nattempts = self._lock(self.LOCK_SH, timeout=timeout)
+                # Log if acquired, which includes counts when verbose
+                self._log_acquired('READ LOCK', wait_time, nattempts)
+            OpenLockTracker.add_lock(self, self.LOCK_SH)
             self._reads += 1
             self._current_lock = self.LOCK_SH
-            # Log if acquired, which includes counts when verbose
-            self._log_acquired('READ LOCK', wait_time, nattempts)
             return True
         else:
             # Increment the read count for nested lock tracking
@@ -535,13 +591,14 @@ class Lock(object):
         timeout = timeout or self.default_timeout
 
         if self._writes == 0:
-            # can raise LockError.
-            wait_time, nattempts = self._lock(self.LOCK_EX, timeout=timeout)
+            if not self.__partial_switch(OpenLockTracker.status(self), self.LOCK_EX):
+                # can raise LockError.
+                wait_time, nattempts = self._lock(self.LOCK_EX, timeout=timeout)
+                # Log if acquired, which includes counts when verbose
+                self._log_acquired('WRITE LOCK', wait_time, nattempts)
+            OpenLockTracker.add_lock(self, self.LOCK_EX)
             self._writes += 1
             self._current_lock = self.LOCK_EX
-            # Log if acquired, which includes counts when verbose
-            self._log_acquired('WRITE LOCK', wait_time, nattempts)
-
             # return True only if we weren't nested in a read lock.
             # TODO: we may need to return two values: whether we got
             # the write lock, and whether this is acquiring a read OR
@@ -578,15 +635,24 @@ class Lock(object):
         """
         timeout = timeout or self.default_timeout
 
-        if self._writes == 1:
+        try:
+            assert self._writes == 1
             self._log_downgrading()
             # can raise LockError.
+            if is_windows:
+                self._partial_unlock()
             wait_time, nattempts = self._lock(self.LOCK_SH, timeout=timeout)
             self._reads = 1
             self._writes = 0
+            self._current_lock = self.LOCK_SH
+            OpenLockTracker.add_lock(self, self.LOCK_SH)
             self._log_downgraded(wait_time, nattempts)
-        else:
-            raise LockDowngradeError(self.path)
+        except (LockError, AssertionError) as e:
+            msg = "%s: %s" % (e.__class__.__name__, str(e)) \
+                if type(e) != AssertionError else \
+                """Cannot downgrade write lock to read with
+                %i too many remaining reference(s)""" % (self._writes - 1)
+            raise LockDowngradeError(self.path, addl_msg=msg)
 
     def upgrade_read_to_write(self, timeout=None):
         """
@@ -597,15 +663,31 @@ class Lock(object):
         """
         timeout = timeout or self.default_timeout
 
-        if self._reads >= 1 and self._writes == 0:
+        try:
+            assert self._reads >= 1 and self._writes == 0
             self._log_upgrading()
             # can raise LockError.
+            if is_windows:
+                self._partial_unlock()
             wait_time, nattempts = self._lock(self.LOCK_EX, timeout=timeout)
             self._reads = 0
             self._writes = 1
+            self._current_lock = self.LOCK_EX
+            OpenLockTracker.add_lock(self, self.LOCK_EX)
             self._log_upgraded(wait_time, nattempts)
-        else:
-            raise LockUpgradeError(self.path)
+        except (LockError, AssertionError) as e:
+            msg = "%s: %s" % (e.__class__.__name__, str(e))
+            if type(e) == AssertionError:
+                msg = """Cannot upgrade read lock to write with %i remaining %s lock
+                reference(s)"""
+                if self._reads < 1:
+                    msg = msg % ((self._reads - 1), 'read')
+                elif self._writes > 0:
+                    msg = msg % ((self._writes - 1), 'write')
+                else:
+                    msg = """Cannot use upgrade from no lock, acquire a read or
+                    write lock directly, then upgrade"""
+            raise LockUpgradeError(self.path, addl_msg=msg)
 
     def release_read(self, release_fn=None):
         """Releases a read lock.
@@ -656,7 +738,7 @@ class Lock(object):
         still nested inside some other write lock, so do not call the
         release_fn, and return False.
 
-        Does limited correctness checking: if a read lock is released
+        Does limited correctness checking: if a write lock is released
         when none are held, this will raise an assertion error.
 
         """
@@ -817,13 +899,16 @@ class WriteTransaction(LockTransaction):
 
 class LockError(Exception):
     """Raised for any errors related to locks."""
+    def __init__(self, msg, addl_msg = None):
+        msg += "\nDue to %s" % addl_msg if addl_msg else ''
+        super(LockError, self).__init__(msg)
 
 
 class LockDowngradeError(LockError):
     """Raised when unable to downgrade from a write to a read lock."""
-    def __init__(self, path):
+    def __init__(self, path, addl_msg = None):
         msg = "Cannot downgrade lock from write to read on file: %s" % path
-        super(LockDowngradeError, self).__init__(msg)
+        super(LockDowngradeError, self).__init__(msg, addl_msg)
 
 
 class LockLimitError(LockError):
@@ -836,9 +921,9 @@ class LockTimeoutError(LockError):
 
 class LockUpgradeError(LockError):
     """Raised when unable to upgrade from a read to a write lock."""
-    def __init__(self, path):
+    def __init__(self, path, addl_msg = None):
         msg = "Cannot upgrade lock from read to write on file: %s" % path
-        super(LockUpgradeError, self).__init__(msg)
+        super(LockUpgradeError, self).__init__(msg, addl_msg)
 
 
 class LockPermissionError(LockError):
@@ -847,14 +932,14 @@ class LockPermissionError(LockError):
 
 class LockROFileError(LockPermissionError):
     """Tried to take an exclusive lock on a read-only file."""
-    def __init__(self, path):
+    def __init__(self, path, addl_msg = None):
         msg = "Can't take write lock on read-only file: %s" % path
-        super(LockROFileError, self).__init__(msg)
+        super(LockROFileError, self).__init__(msg, addl_msg)
 
 
 class CantCreateLockError(LockPermissionError):
     """Attempt to create a lock in an unwritable location."""
-    def __init__(self, path):
+    def __init__(self, path, addl_msg = None):
         msg = "cannot create lock '%s': " % path
         msg += "file does not exist and location is not writable"
-        super(LockError, self).__init__(msg)
+        super(LockError, self).__init__(msg, addl_msg)

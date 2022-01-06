@@ -998,9 +998,10 @@ class PackageInstaller(object):
 
         try:
             if lock is None:
+                lock = spack.store.db.prefix_lock(pkg.spec, timeout)
+            if not lock:
                 tty.debug(msg.format('Acquiring', desc, pkg_id, timeout))
                 op = 'acquire'
-                lock = spack.store.db.prefix_lock(pkg.spec, timeout)
                 if timeout != lock.default_timeout:
                     tty.warn('Expected prefix lock timeout {0}, not {1}'
                              .format(timeout, lock.default_timeout))
