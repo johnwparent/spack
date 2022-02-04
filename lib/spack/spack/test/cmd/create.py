@@ -16,6 +16,15 @@ from spack.url import UndetectableNameError
 create = SpackCommand('create')
 
 
+def _validate_url(url):
+    return
+
+
+@pytest.fixture(autouse=True)
+def url_check(monkeypatch):
+    monkeypatch.setattr(spack.util.url, 'require_url_format', _validate_url)
+
+
 @pytest.fixture(scope='module')
 def parser():
     """Returns the parser for the module"""

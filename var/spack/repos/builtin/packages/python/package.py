@@ -4,17 +4,16 @@
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
 import glob
-import inspect
 import json
 import os
+import platform
 import re
 import subprocess
 import sys
-from distutils.dir_util import copy_tree
 from shutil import copy
 
 import llnl.util.tty as tty
-from llnl.util.filesystem import get_filetype, path_contains_subdirectory
+from llnl.util.filesystem import copy_tree, get_filetype, path_contains_subdirectory
 from llnl.util.lang import match_predicate
 
 from spack import *
@@ -678,7 +677,7 @@ class Python(Package):
                 # See https://autotools.io/automake/silent.html
                 params = ['V=1']
                 params += self.build_targets
-                inspect.getmodule(self).make(*params)
+                make(*params)
 
     def install(self, spec, prefix):
         """Makes the install targets specified by
@@ -688,7 +687,7 @@ class Python(Package):
             if is_windows:
                 self.win_installer(prefix)
             else:
-                inspect.getmodule(self).make(*self.install_targets)
+                make(*self.install_targets)
 
     @run_after('install')
     def filter_compilers(self):

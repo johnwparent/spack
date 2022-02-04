@@ -418,6 +418,7 @@ def log_output(*args, **kwargs):
         with log_output('logfile.txt', echo=True):
             # do things ... output will be logged and printed out
 
+    !!Unix Only!!
     And, if you just want to echo *some* stuff from the parent, use
     ``force_echo``::
 
@@ -427,20 +428,11 @@ def log_output(*args, **kwargs):
             with logger.force_echo():
                 # things here will be echoed *and* logged
 
-    Under the hood, we spawn a daemon and set up a pipe between this
-    process and the daemon.  The daemon writes our output to both the
-    file and to stdout (if echoing).  The parent process can communicate
-    with the daemon to tell it when and when not to echo; this is what
-    force_echo does.  You can also enable/disable echoing by typing 'v'.
-
-    We try to use OS-level file descriptors to do the redirection, but if
-    stdout or stderr has been set to some Python-level file object, we
-    use Python-level redirection instead.  This allows the redirection to
-    work within test frameworks like nose and pytest.
+   See individual log classes for more information.
 
 
     This method is actually a factory serving a per platform
-    (nix vs windows) log_output class
+    (unix vs windows) log_output class
     """
     if sys.platform == 'win32':
         return winlog(*args, **kwargs)
@@ -449,29 +441,7 @@ def log_output(*args, **kwargs):
 
 
 class nixlog(object):
-    """Context manager that logs its output to a file.
-
-    In the simplest case, the usage looks like this::
-
-        with log_output('logfile.txt'):
-            # do things ... output will be logged
-
-    Any output from the with block will be redirected to ``logfile.txt``.
-    If you also want the output to be echoed to ``stdout``, use the
-    ``echo`` parameter::
-
-        with log_output('logfile.txt', echo=True):
-            # do things ... output will be logged and printed out
-
-    And, if you just want to echo *some* stuff from the parent, use
-    ``force_echo``::
-
-        with log_output('logfile.txt', echo=False) as logger:
-            # do things ... output will be logged
-
-            with logger.force_echo():
-                # things here will be echoed *and* logged
-
+    """
     Under the hood, we spawn a daemon and set up a pipe between this
     process and the daemon.  The daemon writes our output to both the
     file and to stdout (if echoing).  The parent process can communicate
