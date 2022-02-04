@@ -16,6 +16,9 @@ from spack.util.module_cmd import (
     path_from_modules,
 )
 
+pytestmark = pytest.mark.skipif(sys.platform == 'win32',
+                                reason="Tests fail on Windows")
+
 test_module_lines = ['prepend-path LD_LIBRARY_PATH /path/to/lib',
                      'setenv MOD_DIR /path/to',
                      'setenv LDFLAGS -Wl,-rpath/path/to/lib',
@@ -25,8 +28,6 @@ test_module_lines = ['prepend-path LD_LIBRARY_PATH /path/to/lib',
 _test_template = "'. %s 2>&1' % args[1]"
 
 
-@pytest.mark.skipif(sys.platform == 'win32',
-                    reason="Not supported on Windows (yet)")
 def test_module_function_change_env(tmpdir, working_env, monkeypatch):
     monkeypatch.setattr(spack.util.module_cmd, '_cmd_template', _test_template)
     src_file = str(tmpdir.join('src_me'))
@@ -40,8 +41,6 @@ def test_module_function_change_env(tmpdir, working_env, monkeypatch):
     assert os.environ['NOT_AFFECTED'] == "NOT_AFFECTED"
 
 
-@pytest.mark.skipif(sys.platform == 'win32',
-                    reason="Not supported on Windows (yet)")
 def test_module_function_no_change(tmpdir, monkeypatch):
     monkeypatch.setattr(spack.util.module_cmd, '_cmd_template', _test_template)
     src_file = str(tmpdir.join('src_me'))
@@ -131,6 +130,7 @@ def test_get_argument_from_module_line():
             get_path_args_from_module_line(bl)
 
 
+# lmod is entirely unsupported on Windows
 def test_lmod_quote_parsing():
     lines = ['setenv("SOME_PARTICULAR_DIR","-L/opt/cray/pe/mpich/8.1.4/gtl/lib")']
     result = get_path_from_module_contents(lines, 'some-module')
