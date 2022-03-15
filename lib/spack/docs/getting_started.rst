@@ -1580,7 +1580,6 @@ Python 3 can be downloaded and installed from the Windows Store, and will be aut
 to your ``PATH`` in this case.
 
 .. note::
-
    Spack currently supports Python versions later than 3.2 inclusive.
 
 """
@@ -1616,7 +1615,6 @@ in a Windows CMD prompt.
    git clone https://github.com/spack/spack.git
 
 .. note::
-
    If you chose to install Spack into a directory on Windows that is set up to require Administrative
    Privleges, Spack will require elevated privleges to run.
    Administrative Privleges can be denoted either by default such as
@@ -1635,7 +1633,6 @@ of the Python executable to your ``PATH`` now. You can permanently add Python to
 by using the ``Edit the system environment variables`` utility in Windows Control Panel.
 
 .. note::
-
    Alternatively, Powershell can be used in place of CMD
 
 To configure Spack, first run the following command inside the Spack console:
@@ -1701,7 +1698,6 @@ and not tabs, so ensure that this is the case when editing one directly.
 
 
 .. note:: Cygwin
-
    The use of Cygwin is not officially supported by Spack and is not tested.
    However Spack will not throw an error, so use if choosing to use Spack
    with Cygwin, know that no functionality is garunteed.
@@ -1743,7 +1739,6 @@ packages known to work on Windows:
 * zlib
 
 .. note::
-
    This is by no means a comprehensive list
 
 ^^^^^^^^^^^^^^
