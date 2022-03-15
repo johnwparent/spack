@@ -27,8 +27,7 @@ test_module_lines = ['prepend-path LD_LIBRARY_PATH /path/to/lib',
                      'prepend-path PATH /path/to/bin']
 
 
-def test_module_function_change_env(tmpdir, working_env, monkeypatch):
-    monkeypatch.setattr(spack.util.module_cmd, '_cmd_template')
+def test_module_function_change_env(tmpdir, working_env):
     src_file = str(tmpdir.join('src_me'))
     with open(src_file, 'w') as f:
         f.write('export TEST_MODULE_ENV_VAR=TEST_SUCCESS\n')
