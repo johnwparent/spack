@@ -39,8 +39,7 @@ def test_module_function_change_env(tmpdir, working_env):
     assert os.environ['NOT_AFFECTED'] == "NOT_AFFECTED"
 
 
-def test_module_function_no_change(tmpdir, monkeypatch):
-    monkeypatch.setattr(spack.util.module_cmd, '_cmd_template')
+def test_module_function_no_change(tmpdir):
     src_file = str(tmpdir.join('src_me'))
     with open(src_file, 'w') as f:
         f.write('echo TEST_MODULE_FUNCTION_PRINT')
