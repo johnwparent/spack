@@ -418,7 +418,7 @@ def log_output(*args, **kwargs):
         with log_output('logfile.txt', echo=True):
             # do things ... output will be logged and printed out
 
-    !!Unix Only!!
+    The following is available on Unix only. No-op on Windows.
     And, if you just want to echo *some* stuff from the parent, use
     ``force_echo``::
 
@@ -428,7 +428,7 @@ def log_output(*args, **kwargs):
             with logger.force_echo():
                 # things here will be echoed *and* logged
 
-   See individual log classes for more information.
+    See individual log classes for more information.
 
 
     This method is actually a factory serving a per platform
@@ -763,6 +763,12 @@ class StreamWrapper:
 
 
 class winlog(object):
+    """
+    Similar to nixlog, with underlying
+    functionality ported to support Windows.
+
+    Does not support the use of 'v' toggling as nixlog does.
+    """
     def __init__(self, file_like=None, echo=False, debug=0, buffer=False,
                  env=None, filter_fn=None):
         self.env = env

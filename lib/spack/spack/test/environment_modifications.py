@@ -178,6 +178,7 @@ def test_filter_system_paths(miscellaneous_paths):
     assert filtered == expected
 
 
+# TODO 27021
 @pytest.mark.skipif(sys.platform == 'win32',
                     reason="Not supported on Windows (yet)")
 def test_set_path(env):

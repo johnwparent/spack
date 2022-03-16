@@ -31,7 +31,6 @@ def check_link_paths(filename, paths):
     with open(os.path.join(datadir, filename)) as file:
         output = file.read()
     detected_paths = _parse_non_system_link_dirs(output)
-    print(detected_paths)
 
     actual = detected_paths
     expected = paths
@@ -68,17 +67,11 @@ def test_pgi_link_paths():
 
 
 def test_gcc7_link_paths():
-    if is_windows:
-        check_link_paths('gcc-7.3.1.txt', [])
-    else:
-        check_link_paths('gcc-7.3.1.txt', [])
+    check_link_paths('gcc-7.3.1.txt', [])
 
 
 def test_clang4_link_paths():
-    if is_windows:
-        check_link_paths('clang-4.0.1.txt', [])
-    else:
-        check_link_paths('clang-4.0.1.txt', [])
+    check_link_paths('clang-4.0.1.txt', [])
 
 
 def test_xl_link_paths():

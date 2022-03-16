@@ -71,8 +71,6 @@ from __future__ import division
 import re
 import math
 import multiprocessing
-import sys
-import threading
 import time
 from contextlib import contextmanager
 

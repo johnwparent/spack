@@ -45,7 +45,6 @@ class Python(Package):
     version('3.10.0', sha256='c4e0cbad57c90690cb813fb4663ef670b4d0f587d8171e2c42bd4c9245bd2758')
     version('3.9.10', sha256='1aa9c0702edbae8f6a2c95f70a49da8420aaa76b7889d3419c186bfc8c0e571e', preferred=True)
     version('3.9.9',  sha256='2cc7b67c1f3f66c571acc42479cdf691d8ed6b47bee12c9b68430413a17a44ea')
-    version('3.9.9',  sha256='2cc7b67c1f3f66c571acc42479cdf691d8ed6b47bee12c9b68430413a17a44ea')
     version('3.9.8',  sha256='7447fb8bb270942d620dd24faa7814b1383b61fa99029a240025fd81c1db8283')
     version('3.9.7',  sha256='a838d3f9360d157040142b715db34f0218e535333696a5569dc6f854604eb9d1')
     version('3.9.6',  sha256='d0a35182e19e416fc8eae25a3dcd4d02d4997333e4ad1f2eee6010aadc3fe866')
@@ -225,7 +224,6 @@ class Python(Package):
     patch('python-3.7.4+-distutils-C++.patch', when='@3.7.4:')
     patch('python-3.7.4+-distutils-C++-testsuite.patch', when='@3.7.4:')
     patch('cpython-windows-externals.patch', when='@:3.9.6 platform=windows')
-
     patch('tkinter.patch', when='@:2.8,3.3:3.7 platform=darwin')
     # Patch the setup script to deny that tcl/x11 exists rather than allowing
     # autodetection of (possibly broken) system components
@@ -906,7 +904,6 @@ class Python(Package):
         Returns:
             dict: variable definitions
         """
-
         cmd = """
 import json
 from sysconfig import (

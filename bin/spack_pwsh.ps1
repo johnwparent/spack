@@ -27,7 +27,7 @@ if ($null -eq $python_pf_ver)
     }
 }
 else{
-    Set-Variable -Name py_exe -Value $pyhton_pf_ver
+    Set-Variable -Name py_exe -Value $python_pf_ver
 }
 
 if (!$null -eq $py_path)
