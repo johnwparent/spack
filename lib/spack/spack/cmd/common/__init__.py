@@ -3,6 +3,8 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
+import os
+
 import llnl.util.tty as tty
 import llnl.util.tty.color as color
 
@@ -27,16 +29,19 @@ def shell_init_instructions(cmd, equivalent):
         "To set up shell support, run the command below for your shell.",
         "",
         color.colorize("@*c{For bash/zsh/sh:}"),
-        "  . %s/setup-env.sh" % spack.paths.share_path,
+        "  . %ssetup-env.sh" % (spack.paths.share_path + os.path.sep),
         "",
         color.colorize("@*c{For csh/tcsh:}"),
-        "  source %s/setup-env.csh" % spack.paths.share_path,
+        "  source %ssetup-env.csh" % (spack.paths.share_path + os.path.sep),
         "",
         color.colorize("@*c{For fish:}"),
-        "  source %s/setup-env.fish" % spack.paths.share_path,
+        "  source %ssetup-env.fish" % (spack.paths.share_path + os.path.sep),
         "",
         color.colorize("@*c{For Windows batch:}"),
-        "  source %s/spack_cmd.bat" % spack.paths.share_path,
+        "  %sspack_cmd.bat" % (spack.paths.share_path + os.path.sep),
+        "",
+        color.colorize("@*c{For PowerShell:}"),
+        "  powershell %sspack_ps.ps1" % (spack.paths.share_path + os.path.sep),
         "",
         "Or, if you do not want to use shell support, run " + (
             "one of these" if shell_specific else "this") + " instead:",
@@ -48,7 +53,8 @@ def shell_init_instructions(cmd, equivalent):
             equivalent.format(sh_arg="--sh  ") + "  # bash/zsh/sh",
             equivalent.format(sh_arg="--csh ") + "  # csh/tcsh",
             equivalent.format(sh_arg="--fish") + "  # fish",
-            equivalent.format(sh_arg="--bat ") + "  # batch"
+            equivalent.format(sh_arg="--bat ") + "  # batch",
+            equivalent.format(sh_arg="--ps  ") + "  # powershell"
         ]
     else:
         msg += ["  " + equivalent]
