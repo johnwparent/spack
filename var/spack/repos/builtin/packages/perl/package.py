@@ -41,6 +41,7 @@ class Perl(Package):  # Perl doesn't use Autotools, it should subclass Package
     # explanation of version numbering scheme
 
     # Development releases (odd numbers)
+    version('5.35.8', sha256='cf240544c712bba182c46e377c01082aea69bc682465e8f29efa21c55fe84750', preferred=is_windows)
     version('5.35.0', sha256='d6c0eb4763d1c73c1d18730664d43fcaf6100c31573c3b81e1504ec8f5b22708')
     version('5.33.3', sha256='4f4ba0aceb932e6cf7c05674d05e51ef759d1c97f0685dee65a8f3d190f737cd')
     version('5.31.7', sha256='d05c4e72128f95ef6ffad42728ecbbd0d9437290bf0f88268b51af011f26b57d')
@@ -82,7 +83,7 @@ class Perl(Package):  # Perl doesn't use Autotools, it should subclass Package
         # :5.24.1 needs zlib@:1.2.8: https://rt.cpan.org/Public/Bug/Display.html?id=120134
         depends_on('zlib@:1.2.8', when='@5.20.3:5.24.1')
 
-    conflicts('@5.34.1:', when='%msvc@:19.29.30136')
+    conflicts('@:5.35.8', when='%msvc@19.30.30423:')
     # there has been a long fixed issue with 5.22.0 with regard to the ccflags
     # definition.  It is well documented here:
     # https://rt.perl.org/Public/Bug/Display.html?id=126468
