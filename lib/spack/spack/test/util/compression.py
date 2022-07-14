@@ -44,7 +44,10 @@ def archive_file(tmpdir_factory, request):
     return os.path.join(str(tmpdir), 'Foo.%s' % extension)
 
 
-@pytest.mark.parametrize('archive_file', ext_archive.keys(), indirect=True)
+# Spack does not rely on native python support for tar based files,
+# Testing them here would be redundant/confusing on error
+@pytest.mark.parametrize('archive_file',
+    [key for key in ext_archive.keys() if 'tar' not in key], indirect=True)
 def test_native_unpacking(tmpdir_factory, archive_file):
     extension = scomp.extension(archive_file)
     util = scomp.decompressor_for(archive_file, extension)

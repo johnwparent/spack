@@ -61,11 +61,9 @@ def allowed_archive(path):
 
 
 def _untar(archive_file):
-    """ Untar archive. Prefer native Python `tarfile`
-    but fall back to system utility if there is a failure
-    to find the native Python module (tar on Unix).
-    Filters archives through native support gzip and xz
-    compression formats.
+    """ Untar archive. Use tar available on system.
+    Python's tarfile is (and should) not used here due to a number of
+    well known, long running issues with tarfile module. For more info see
 
     Args:
         archive_file (str): absolute path to the archive to be extracted.
@@ -272,9 +270,14 @@ unrecognized file extension: '%s'" % ext)
     if re.match(r'xz', ext):
         return _lzma_decomp
 
+    # Pure lzma compressed files would be caught by above. Handle lzma
+    # compressed tarballs on Windows here.
+    # Similar for .Z compressed files/tarballs
     if ('xz' in ext or 'Z' in ext) and is_windows:
         return _7zip
 
+    # Because this is the last filter, we can garuntee that the tar utility will not be
+    # passed compression types the system utility cannot handle.
     return _untar
 
 
