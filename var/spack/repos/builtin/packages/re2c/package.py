@@ -6,7 +6,7 @@
 from spack.package import *
 
 
-class Re2c(AutotoolsPackage):
+class Re2c(CMakePackage):
     """re2c: a free and open-source lexer generator for C and C++"""
 
     homepage = "https://re2c.org/index.html"
@@ -22,6 +22,9 @@ class Re2c(AutotoolsPackage):
     version("1.3", sha256="f37f25ff760e90088e7d03d1232002c2c2672646d5844fdf8e0d51a5cd75a503")
     version("1.2.1", sha256="1a4cd706b5b966aeffd78e3cf8b24239470ded30551e813610f9cd1a4e01b817")
 
+
+    conflicts("platform=windows", when="@:1.2.1")
+
     def configure_args(self):
         return [
             "--disable-benchmarks",
@@ -32,3 +35,17 @@ class Re2c(AutotoolsPackage):
             "--disable-libs",  # experimental
             "--enable-golang",
         ]
+
+    def cmake_args(self):
+        return [
+            self.define("RE2C_BUILD_RE2GO", True),
+            self.define("RE2C_BUILD_RE2RUST", True),
+            self.define("RE2C_REBUILD_LEXERS", False),
+            self.define("RE2C_REBUILD_DOCS", False),
+            self.define("RE2C_BUILD_BENCHMARKS", False),
+            self.define("RE2C_BUILD_LIBS", False),
+        ]
+
+    @when("@:1.2.1")
+    def cmake(self, spec, prefix):
+        configure("--prefix=" + prefix, *self.configure_args())
