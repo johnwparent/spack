@@ -208,7 +208,6 @@ class Paraview(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("netcdf-c")
     depends_on("pegtl")
     depends_on("protobuf@3.4:")
-    depends_on("libxml2")
     depends_on("lz4")
     depends_on("xz")
     depends_on("zlib")
@@ -219,6 +218,9 @@ class Paraview(CMakePackage, CudaPackage, ROCmPackage):
             "kokkos +rocm amdgpu_target={0}".format(target),
             when="+rocm amdgpu_target={0}".format(target),
         )
+
+    for plat in ["linux", "darwin", "cray"]:
+        depends_on("libxml2", when="platform=%s" % plat)
 
     # Older builds of pugi export their symbols differently,
     # and pre-5.9 is unable to handle that.
