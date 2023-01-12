@@ -1,0 +1,309 @@
+name: Windows Builder
+
+on:
+  push:
+    branches:
+      - windows-paraview-nightly-test
+  schedule:
+    # nightly at 2:00 AM
+    - cron: '0 2 * * *'
+
+defaults:
+  run:
+    shell:
+     powershell Invoke-Expression -Command "./share/spack/qa/windows_test_setup.ps1"; {0}
+
+jobs:
+  builder-zlib:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      with:
+        python-version: 3.9
+    - name: Install Python packages
+      run: |
+          python -m pip install --upgrade pip six pywin32 setuptools codecov coverage clingo
+    - name: Paraview - zlib
+      run: |
+        ./.github/workflows/win_builder_help.ps1
+        spack -d install -v zlib
+  builder-perl:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      with:
+        python-version: 3.9
+    - name: Install Python packages
+      run: |
+          python -m pip install --upgrade pip six pywin32 setuptools codecov coverage clingo
+    - name: Paraview - perl
+      run: |
+        ./.github/workflows/win_builder_help.ps1
+        spack -d install -v perl
+
+  builder-bzip2:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      with:
+        python-version: 3.9
+    - name: Install Python packages
+      run: |
+          python -m pip install --upgrade pip six pywin32 setuptools codecov coverage clingo
+    - name: Paraview - bzip2
+      run: |
+        ./.github/workflows/win_builder_help.ps1
+        spack -d install -v bzip2
+
+  builder-cli11:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      with:
+        python-version: 3.9
+    - name: Install Python packages
+      run: |
+          python -m pip install --upgrade pip six pywin32 setuptools codecov coverage clingo
+    - name: Paraview - cli11
+      run: |
+        ./.github/workflows/win_builder_help.ps1
+        spack -d install -v cli11
+
+  builder-dc:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      with:
+        python-version: 3.9
+    - name: Install Python packages
+      run: |
+          python -m pip install --upgrade pip six pywin32 setuptools codecov coverage clingo
+    - name: Paraview - double-conversion
+      run: |
+        ./.github/workflows/win_builder_help.ps1
+        spack -d install -v double-conversion
+
+  builder-libogg:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      with:
+        python-version: 3.9
+    - name: Install Python packages
+      run: |
+          python -m pip install --upgrade pip six pywin32 setuptools codecov coverage clingo
+    - name: Paraview - libogg
+      run: |
+        ./.github/workflows/win_builder_help.ps1
+        spack -d install -v libogg
+
+  builder-libpng:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      with:
+        python-version: 3.9
+    - name: Install Python packages
+      run: |
+          python -m pip install --upgrade pip six pywin32 setuptools codecov coverage clingo
+    - name: Paraview - libpng
+      run: |
+        ./.github/workflows/win_builder_help.ps1
+        spack -d install -v libpng
+
+  builder-libtiff:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      with:
+        python-version: 3.9
+    - name: Install Python packages
+      run: |
+          python -m pip install --upgrade pip six pywin32 setuptools codecov coverage clingo
+    - name: Paraview - libtiff
+      run: |
+        ./.github/workflows/win_builder_help.ps1
+        spack -d install -v libtiff
+
+  builder-zstd:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      with:
+        python-version: 3.9
+    - name: Install Python packages
+      run: |
+          python -m pip install --upgrade pip six pywin32 setuptools codecov coverage clingo
+    - name: Paraview - zstd
+      run: |
+        ./.github/workflows/win_builder_help.ps1
+        spack -d install -v zstd
+
+  builder-pegtl:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      with:
+        python-version: 3.9
+    - name: Install Python packages
+      run: |
+          python -m pip install --upgrade pip six pywin32 setuptools codecov coverage clingo
+    - name: Paraview - pegtl
+      run: |
+        ./.github/workflows/win_builder_help.ps1
+        spack -d install -v pegtl
+
+    - name: Paraview - zlib
+      run: |
+        ./.github/workflows/win_builder_help.ps1
+        spack -d install -v zlib
+
+  builder-protobuf:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      with:
+        python-version: 3.9
+    - name: Install Python packages
+      run: |
+          python -m pip install --upgrade pip six pywin32 setuptools codecov coverage clingo
+    - name: Paraview - protobuf
+      run: |
+        ./.github/workflows/win_builder_help.ps1
+        spack -d install -v protobuf
+
+  builder-lz4:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      with:
+        python-version: 3.9
+    - name: Install Python packages
+      run: |
+          python -m pip install --upgrade pip six pywin32 setuptools codecov coverage clingo
+    - name: Paraview - lz4
+      run: |
+        ./.github/workflows/win_builder_help.ps1
+        spack -d install -v lz4
+
+  builder-netcdf-c:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      with:
+        python-version: 3.9
+    - name: Install Python packages
+      run: |
+          python -m pip install --upgrade pip six pywin32 setuptools codecov coverage clingo
+    - name: Paraview - netcdf-c
+      run: |
+        ./.github/workflows/win_builder_help.ps1
+        spack -d install -v netcdf-c
+
+  builder-glew:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      with:
+        python-version: 3.9
+    - name: Install Python packages
+      run: |
+          python -m pip install --upgrade pip six pywin32 setuptools codecov coverage clingo
+    - name: Paraview - glew
+      run: |
+        ./.github/workflows/win_builder_help.ps1
+        spack -d install -v glew
+
+  builder-libtheora:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      with:
+        python-version: 3.9
+    - name: Install Python packages
+      run: |
+          python -m pip install --upgrade pip six pywin32 setuptools codecov coverage clingo
+    - name: Paraview - libtheora
+      run: |
+        ./.github/workflows/win_builder_help.ps1
+        spack -d install -v libtheora
+
+  builder-xz:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      with:
+        python-version: 3.9
+    - name: Install Python packages
+      run: |
+          python -m pip install --upgrade pip six pywin32 setuptools codecov coverage clingo
+    - name: Paraview - xz
+      run: |
+        ./.github/workflows/win_builder_help.ps1
+        set PATH=%PATH%;"%ProgramFiles%\Git\usr\bin"
+        spack -d install -v xz
+
+  builder-paraview:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      with:
+        python-version: 3.9
+    - name: Install Python packages
+      run: |
+          python -m pip install --upgrade pip six pywin32 setuptools codecov coverage clingo
+    - name: Paraview - install Paraview
+      run: |
+        ./.github/workflows/win_builder_help.ps1
+        spack -d install -v paraview
