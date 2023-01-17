@@ -98,8 +98,9 @@ class MSBuildBuilder(MSBuildBuilder):
         super().build(pkg, spec, prefix)
 
     def install(self, pkg, spec, prefix):
-        plat_arch = "x64" if self.is_64bit() else "x86"
+        plat_arch = "win32"
         with working_dir(self.build_directory):
             install_tree(os.path.join(plat_arch, "Release"), prefix.lib)
+        rename(os.path.join(prefix.lib, "libtheora_static.lib"), os.path.join(prefix.lib, "libtheora.lib"))
         with working_dir(pkg.stage.source_path):
             install_tree("include", prefix.include)
