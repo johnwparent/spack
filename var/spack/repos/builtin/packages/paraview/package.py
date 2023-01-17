@@ -208,9 +208,7 @@ class Paraview(CMakePackage, CudaPackage):
     depends_on("xz")
     depends_on("zlib")
     depends_on("libcatalyst@2:", when="+libcatalyst")
-
-    for plat in ["linux", "darwin", "cray"]:
-        depends_on("libxml2", when="platform=%s" % plat)
+    depends_on("libxml2")
 
     # Older builds of pugi export their symbols differently,
     # and pre-5.9 is unable to handle that.
@@ -485,13 +483,16 @@ class Paraview(CMakePackage, CudaPackage):
             cmake_args.append("-DPARAVIEW_ENABLE_PYTHON:BOOL=OFF")
 
         if "+mpi" in spec:
+            ext = ".exe" if "platform=windows" in spec else ""
+            # changes below are temp stopgap support for Windows and should NOT be allowed to merge
+            # until MSMPI vs use of compiler wrappers is resolved
             cmake_args.extend(
                 [
                     "-DPARAVIEW_USE_MPI:BOOL=ON",
-                    "-DMPIEXEC:FILEPATH=%s/bin/mpiexec" % spec["mpi"].prefix,
-                    "-DMPI_CXX_COMPILER:PATH=%s" % spec["mpi"].mpicxx,
-                    "-DMPI_C_COMPILER:PATH=%s" % spec["mpi"].mpicc,
-                    "-DMPI_Fortran_COMPILER:PATH=%s" % spec["mpi"].mpifc,
+                    # "-DMPIEXEC:FILEPATH=%s/bin/mpiexec%s" % (spec["mpi"].prefix, ext),
+                    # "-DMPI_CXX_COMPILER:PATH=%s" % spec["mpi"].mpicxx,
+                    # "-DMPI_C_COMPILER:PATH=%s" % spec["mpi"].mpicc,
+                    # "-DMPI_Fortran_COMPILER:PATH=%s" % spec["mpi"].mpifc,
                 ]
             )
 
@@ -550,6 +551,13 @@ class Paraview(CMakePackage, CudaPackage):
                 [
                     "-DVTK_USE_X:BOOL=OFF",
                     "-DPARAVIEW_DO_UNIX_STYLE_INSTALLS:BOOL=ON",
+                ]
+            )
+        if "platform=windows" in spec:
+            # Obviously we can't use x on Windows
+            cmake_args.extend(
+                [
+                    "-DVTK_USE_X:BOOL=OFF"
                 ]
             )
 
