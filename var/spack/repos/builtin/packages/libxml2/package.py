@@ -44,7 +44,9 @@ class Libxml2(AutotoolsPackage, NMakePackage):
     variant("python", default=False, description="Enable Python support")
 
     depends_on("pkgconfig@0.9.0:", type="build", when="build_system=autotools")
-    depends_on("iconv")
+    # conditional on non Windows, but rather than specify for each platform
+    # specify for non Windows builder, which has equivalent effect
+    depends_on("iconv", when="build_system=autotools")
     depends_on("zlib")
     depends_on("xz")
 
@@ -180,6 +182,7 @@ class NMakeBuilder(NMakeBuilder, RunAfter):
     def makefile_name(self):
         return "Makefile.msvc"
 
+    @property
     def build_directory(self):
         return os.path.join(super().build_directory, "win32")
 
@@ -188,11 +191,11 @@ class NMakeBuilder(NMakeBuilder, RunAfter):
             opts = [
                 "prefix=%s" % prefix,
                 "compiler=msvc",
-                "iconv=yes",
+                "iconv=no",
                 "zlib=yes",
                 "lzma=yes",
-                "lib=%s" % spec["iconv"].prefix.lib,
-                "include=%s" % spec["iconv"].prefix.include,
+                "lib=%s" % ";".join((spec["zlib"].prefix.lib, spec["xz"].prefix.lib)),
+                "include=%s" % ";".join((spec["zlib"].prefix.include, spec["xz"].prefix.include)),
             ]
             if "+python" in spec:
                 opts.append("python=yes")
