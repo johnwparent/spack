@@ -44,9 +44,6 @@ class Python(AutotoolsPackage, Package):
 
     version("3.11.1", sha256="baed518e26b337d4d8105679caf68c5c32630d702614fc174e98cb95c46bdfa4")
     version("3.11.0", sha256="64424e96e2457abbac899b90f9530985b51eef2905951febd935f0e73414caeb")
-    version(
-        preferred=True,
-    )
     version("3.10.7", sha256="1b2e4e2df697c52d36731666979e648beeda5941d0f95740aafbf4163e5cc126")
     version("3.10.6", sha256="848cb06a5caa85da5c45bd7a9221bb821e33fc2bdcba088c127c58fad44e6343")
     version("3.10.5", sha256="18f57182a2de3b0be76dfc39fdcfd28156bb6dd23e5f08696f7492e9e3d0bf2d")
@@ -932,7 +929,7 @@ class RunAfter(object):
                     self.pkg.command("-c", "import Tix")
 
 
-class AutotoolsBuilder(AutotoolsBuilder, RunAfter, BuildEnvironment):
+class AutotoolsBuilder(AutotoolsBuilder, RunAfter):
     def configure_args(self):
         spec = self.spec
         config_args = []
@@ -1044,7 +1041,7 @@ class AutotoolsBuilder(AutotoolsBuilder, RunAfter, BuildEnvironment):
         return config_args
 
 
-class GenericBuilder(GenericBuilder, RunAfter, BuildEnvironment):
+class GenericBuilder(GenericBuilder, RunAfter):
     phases = ("build", "install")
 
     @property
