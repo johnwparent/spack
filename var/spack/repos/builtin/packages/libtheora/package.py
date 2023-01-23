@@ -110,7 +110,8 @@ class MSBuildBuilder(MSBuildBuilder):
         rename(os.path.join(prefix.lib, "libtheora_static.lib"), os.path.join(prefix.lib, "theora.lib"))
         # The encoder and decoder libs are baked into the theora lib on Windows, so we spoof them
         # here so libtheora is detectable by CMake and pkg-config and linkable by consuming projects
-        copy("theora.lib", "theoradec.lib")
-        copy("theora.lib", "theoraenc.lib")
+        with working_dir(prefix.lib):
+            copy("theora.lib", "theoradec.lib")
+            copy("theora.lib", "theoraenc.lib")
         with working_dir(pkg.stage.source_path):
             install_tree("include", prefix.include)
