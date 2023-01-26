@@ -95,6 +95,8 @@ class Proj(CMakePackage):
             self.define_from_variant("ENABLE_TIFF", "tiff"),
         ]
 
+
+class Setup(object):
     def setup_run_environment(self, env):
         # PROJ_LIB doesn't need to be set. However, it may be set by conda.
         # If an incompatible version of PROJ is found in PROJ_LIB, it can
@@ -110,7 +112,7 @@ class Proj(CMakePackage):
         self.setup_run_environment(env)
 
 
-class CMakeBuilder(cmake.CMakeBuilder):
+class CMakeBuilder(cmake.CMakeBuilder, Setup):
     def cmake_args(self):
         args = [
             self.define("PROJ_LIB", join_path(self.stage.source_path, "nad")),
@@ -122,7 +124,7 @@ class CMakeBuilder(cmake.CMakeBuilder):
         return args
 
 
-class AutotoolsBuilder(autotools.AutotoolsBuilder):
+class AutotoolsBuilder(autotools.AutotoolsBuilder, Setup):
     def configure_args(self):
         args = ["PROJ_LIB={0}".format(join_path(self.stage.source_path, "nad"))]
 
