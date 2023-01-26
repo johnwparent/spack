@@ -88,12 +88,10 @@ class Proj(CMakePackage):
     depends_on("sqlite@3.11:", when="@6:")
     depends_on("libtiff@4.0:", when="@7:+tiff")
     depends_on("curl@7.29.0:", when="@7:+curl")
+    depends_on("pkgconfig@0.9.0:", type="build", when="@6: build_system=autotools")
+    depends_on("cmake@2.6.0:", type="build", when="build_system=cmake")
 
-    def cmake_args(self):
-        return [
-            self.define("PROJ_LIB", join_path(self.stage.source_path, "nad")),
-            self.define_from_variant("ENABLE_TIFF", "tiff"),
-        ]
+    build_system("autotools", conditional("cmake", when="@5.0.0:"), default="autotools")
 
 
 class Setup(object):
