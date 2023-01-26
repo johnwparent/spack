@@ -3,6 +3,7 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
+from spack.build_systems import autotools, cmake
 from spack.package import *
 
 
@@ -107,3 +108,36 @@ class Proj(CMakePackage):
 
     def setup_dependent_run_environment(self, env, dependent_spec):
         self.setup_run_environment(env)
+
+
+class CMakeBuilder(cmake.CMakeBuilder):
+    def cmake_args(self):
+        args = [
+            self.define("PROJ_LIB", join_path(self.stage.source_path, "nad")),
+            self.define_from_variant("ENABLE_TIFF", "tiff"),
+            self.define_from_variant("ENABLE_CURL", "curl"),
+        ]
+        if self.spec.satisfies("@6:"):
+            args.append(self.define("USE_EXTERNAL_GTEST", True))
+        return args
+
+
+class AutotoolsBuilder(autotools.AutotoolsBuilder):
+    def configure_args(self):
+        args = ["PROJ_LIB={0}".format(join_path(self.stage.source_path, "nad"))]
+
+        if self.spec.satisfies("@6:"):
+            args.append("--with-external-gtest")
+
+        if self.spec.satisfies("@7:"):
+            if "+tiff" in self.spec:
+                args.append("--enable-tiff")
+            else:
+                args.append("--disable-tiff")
+
+            if "+curl" in self.spec:
+                args.append("--with-curl=" + self.spec["curl"].prefix.bin.join("curl-config"))
+            else:
+                args.append("--without-curl")
+
+        return args
