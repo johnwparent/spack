@@ -818,6 +818,12 @@ class Gcc(AutotoolsPackage, GNUMirrorPackage):
                     "--with-libiconv-prefix={0}".format(spec["iconv"].prefix),
                 ]
             )
+        PlatformOpts(                [
+                    "--with-native-system-header-dir=/usr/include",
+                    "--with-sysroot={0}".format(macos_sdk_path()),
+                    "--with-libiconv-prefix={0}".format(spec["iconv"].prefix),
+                ], when="darwin")
+
 
         # enable appropriate bootstrapping flags
         stage1_ldflags = str(self.rpath_args)

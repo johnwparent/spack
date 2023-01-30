@@ -209,7 +209,7 @@ class Executable(object):
             if output in (str, str.split) or error in (str, str.split):
                 result = ""
                 if output in (str, str.split):
-                    if sys.platform == "win32":
+                    if spack.platforms.IS_WINDOWS:
                         outstr = str(out.decode("ISO-8859-1"))
                     else:
                         outstr = str(out.decode("utf-8"))
@@ -284,7 +284,7 @@ def which_string(*args, **kwargs):
         path = path.split(os.pathsep)
 
     for name in args:
-        win_candidates = []
+        win_candidates = [name]
         if sys.platform == "win32" and (not name.endswith(".exe") and not name.endswith(".bat")):
             win_candidates = [name + ext for ext in [".exe", ".bat"]]
         candidate_names = [name] if not win_candidates else win_candidates

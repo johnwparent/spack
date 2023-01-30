@@ -7,6 +7,7 @@ import contextlib
 import llnl.util.lang
 
 import spack.util.environment
+from spack.util.host import detect
 
 from .cray import Cray
 from .darwin import Darwin
@@ -22,7 +23,7 @@ platforms = [Cray, Darwin, Linux, Windows, Test]
 def _host():
     """Detect and return the platform for this machine or None if detection fails."""
     for platform_cls in sorted(platforms, key=lambda plt: plt.priority):
-        if platform_cls.detect():
+        if detect(platform_cls):
             return platform_cls()
     return None
 
