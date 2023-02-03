@@ -45,6 +45,7 @@ from llnl.util.tty.color import colorize
 from llnl.util.tty.log import log_output
 
 import spack.binary_distribution as binary_distribution
+import spack.build_systems.cmake
 import spack.compilers
 import spack.error
 import spack.hooks
@@ -588,7 +589,10 @@ def log(pkg):
             # Check that we are trying to copy things that are
             # in the stage tree (not arbitrary files)
             abs_expr = os.path.realpath(glob_expr)
-            if os.path.realpath(pkg.stage.path) not in abs_expr:
+            if os.path.realpath(pkg.stage.path) not in abs_expr and not (
+                isinstance(pkg.builder, spack.build_systems.cmake.CMakeBuilder)
+                and spack.config.get("config:cmake_ext_build")
+            ):
                 errors.write("[OUTSIDE SOURCE PATH]: {0}\n".format(glob_expr))
                 continue
             # Now that we are sure that the path is within the correct
@@ -1880,6 +1884,8 @@ class BuildProcessInstaller(object):
         # whether to keep the build stage after installation
         self.keep_stage = install_args.get("keep_stage", False)
 
+        self.cmake_build_stage = install_args.get("cmake_stage", "")
+
         # whether to skip the patch phase
         self.skip_patch = install_args.get("skip_patch", False)
 
@@ -1908,6 +1914,9 @@ class BuildProcessInstaller(object):
         """Main entry point from ``build_process`` to kick off install in child."""
 
         self.timer.start("stage")
+
+        if self.cmake_build_stage:
+            self.pkg.cmake_stage_dir = self.cmake_build_stage
 
         if not self.fake:
             if not self.skip_patch:
@@ -2398,6 +2407,7 @@ class BuildRequest(object):
             ("package_use_cache", True),
             ("keep_prefix", False),
             ("keep_stage", False),
+            ("cmake_stage", ""),
             ("restage", False),
             ("skip_patch", False),
             ("tests", False),
