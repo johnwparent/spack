@@ -52,6 +52,15 @@ class Msmpi(Package):
         spec.mpif77 = spack_f77
 
 
+    def setup_dependent_package(self, module, dependent_spec):
+        spec = self.spec
+
+        spec.mpicc = spack_cc
+        spec.mpicxx = spack_cxx
+        spec.mpifc = spack_fc
+        spec.mpif77 = spack_f77
+
+
 class GenericBuilder(GenericBuilder):
     def setup_build_environment(self, env):
         ifort_root = os.path.join(*self.pkg.compiler.fc.split(os.path.sep)[:-2])

@@ -61,5 +61,5 @@ class Scons(PythonPackage):
     def setup_dependent_package(self, module, dspec):
         if is_windows:
             module.scons = Executable(self.spec.prefix.Scripts.scons)
-        else:
+        else:    
             module.scons = Executable(self.spec.prefix.bin.scons)

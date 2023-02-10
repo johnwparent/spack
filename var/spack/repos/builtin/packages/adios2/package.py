@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
 import os
+import sys
 
 from spack.package import *
 
@@ -175,6 +176,45 @@ class Adios2(CMakePackage, CudaPackage):
         elif self.spec.satisfies("%fj +fortran"):
             env.set("FFLAGS", "-Ccpp")
 
+    @property
+    def libs(self):
+        spec = self.spec
+        libs_to_seek = set()
+
+        if "@2.6:" in spec:
+            libs_to_seek.add("libadios2_core")
+            libs_to_seek.add("libadios2_c")
+            libs_to_seek.add("libadios2_cxx11")
+            if "+fortran" in spec:
+                libs_to_seek.add("libadios2_fortran")
+
+            if "+mpi" in spec:
+                libs_to_seek.add("libadios2_core_mpi")
+                libs_to_seek.add("libadios2_c_mpi")
+                libs_to_seek.add("libadios2_cxx11_mpi")
+                if "+fortran" in spec:
+                    libs_to_seek.add("libadios2_fortran_mpi")
+
+            if "@2.7: +shared+hdf5" in spec and "@1.12:" in spec["hdf5"]:
+                libs_to_seek.add("libadios2_h5vol")
+
+        else:
+            libs_to_seek.add("libadios2")
+            if "+fortran" in spec:
+                libs_to_seek.add("libadios2_fortran")
+
+        return find_libraries(
+            list(libs_to_seek), root=self.spec.prefix, shared=("+shared" in spec), recursive=True
+        )
+
+    def setup_run_environment(self, env):
+        try:
+            all_libs = self.libs
+            idx = all_libs.basenames.index("libadios2_h5vol.so")
+            env.prepend_path("HDF5_PLUGIN_PATH", os.path.dirname(all_libs[idx]))
+        except ValueError:
+            pass
+
     def cmake_args(self):
         spec = self.spec
         from_variant = self.define_from_variant
@@ -225,42 +265,3 @@ class Adios2(CMakePackage, CudaPackage):
             args.append("-DPython_EXECUTABLE:FILEPATH=%s" % spec["python"].command.path)
 
         return args
-
-    @property
-    def libs(self):
-        spec = self.spec
-        libs_to_seek = set()
-
-        if "@2.6:" in spec:
-            libs_to_seek.add("libadios2_core")
-            libs_to_seek.add("libadios2_c")
-            libs_to_seek.add("libadios2_cxx11")
-            if "+fortran" in spec:
-                libs_to_seek.add("libadios2_fortran")
-
-            if "+mpi" in spec:
-                libs_to_seek.add("libadios2_core_mpi")
-                libs_to_seek.add("libadios2_c_mpi")
-                libs_to_seek.add("libadios2_cxx11_mpi")
-                if "+fortran" in spec:
-                    libs_to_seek.add("libadios2_fortran_mpi")
-
-            if "@2.7: +shared+hdf5" in spec and "@1.12:" in spec["hdf5"]:
-                libs_to_seek.add("libadios2_h5vol")
-
-        else:
-            libs_to_seek.add("libadios2")
-            if "+fortran" in spec:
-                libs_to_seek.add("libadios2_fortran")
-
-        return find_libraries(
-            list(libs_to_seek), root=self.spec.prefix, shared=("+shared" in spec), recursive=True
-        )
-
-    def setup_run_environment(self, env):
-        try:
-            all_libs = self.libs
-            idx = all_libs.basenames.index("libadios2_h5vol.so")
-            env.prepend_path("HDF5_PLUGIN_PATH", os.path.dirname(all_libs[idx]))
-        except ValueError:
-            pass

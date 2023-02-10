@@ -208,7 +208,6 @@ class Paraview(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("netcdf-c")
     depends_on("pegtl")
     depends_on("protobuf@3.4:")
-    depends_on("libxml2")
     depends_on("lz4")
     depends_on("xz")
     depends_on("zlib")
@@ -219,6 +218,8 @@ class Paraview(CMakePackage, CudaPackage, ROCmPackage):
             "kokkos +rocm amdgpu_target={0}".format(target),
             when="+rocm amdgpu_target={0}".format(target),
         )
+
+    depends_on("libxml2")
 
     # Older builds of pugi export their symbols differently,
     # and pre-5.9 is unable to handle that.
@@ -501,13 +502,16 @@ class Paraview(CMakePackage, CudaPackage, ROCmPackage):
             cmake_args.append("-DPARAVIEW_ENABLE_PYTHON:BOOL=OFF")
 
         if "+mpi" in spec:
+            ext = ".exe" if "platform=windows" in spec else ""
+            # changes below are temp stopgap support for Windows and should NOT be allowed to merge
+            # until MSMPI vs use of compiler wrappers is resolved
             cmake_args.extend(
                 [
                     "-DPARAVIEW_USE_MPI:BOOL=ON",
-                    "-DMPIEXEC:FILEPATH=%s/bin/mpiexec" % spec["mpi"].prefix,
-                    "-DMPI_CXX_COMPILER:PATH=%s" % spec["mpi"].mpicxx,
-                    "-DMPI_C_COMPILER:PATH=%s" % spec["mpi"].mpicc,
-                    "-DMPI_Fortran_COMPILER:PATH=%s" % spec["mpi"].mpifc,
+                    # "-DMPIEXEC:FILEPATH=%s/bin/mpiexec%s" % (spec["mpi"].prefix, ext),
+                    # "-DMPI_CXX_COMPILER:PATH=%s" % spec["mpi"].mpicxx,
+                    # "-DMPI_C_COMPILER:PATH=%s" % spec["mpi"].mpicc,
+                    # "-DMPI_Fortran_COMPILER:PATH=%s" % spec["mpi"].mpifc,
                 ]
             )
 
@@ -566,6 +570,13 @@ class Paraview(CMakePackage, CudaPackage, ROCmPackage):
                 [
                     "-DVTK_USE_X:BOOL=OFF",
                     "-DPARAVIEW_DO_UNIX_STYLE_INSTALLS:BOOL=ON",
+                ]
+            )
+        if "platform=windows" in spec:
+            # Obviously we can't use x on Windows
+            cmake_args.extend(
+                [
+                    "-DVTK_USE_X:BOOL=OFF"
                 ]
             )
 
