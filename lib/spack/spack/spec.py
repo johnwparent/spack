@@ -1258,6 +1258,7 @@ class SpecBuildInterface(lang.ObjectWrapper):
 class Spec(object):
     #: Cache for spec's prefix, computed lazily in the corresponding property
     _prefix = None
+    abstract_hash = None
 
     @staticmethod
     def default_arch():
@@ -1272,7 +1273,7 @@ class Spec(object):
         normal=False,
         concrete=False,
         external_path=None,
-        external_modules=None,
+        external_modules=None
     ):
         """Create a new Spec.
 
@@ -1831,6 +1832,44 @@ class Spec(object):
     def process_hash_bit_prefix(self, bits):
         """Get the first <bits> bits of the DAG hash as an integer type."""
         return spack.util.hash.base32_prefix_bits(self.process_hash(), bits)
+
+    def lookup_hash(self):
+        """Given a spec with nothing but a DAG hash, attempt to populate the values by looking up
+        the hash in the environment, store, or finally, binary caches."""
+        import spack.environment
+
+        if not hasattr(self, 'abstract_hash'):
+            print("spec {} doesn't even know what an abstract hash is!".format(self))
+            return
+
+        if not getattr(self, 'abstract_hash', None):
+            return
+        print("lookup is trying abstract hash {}".format(self.abstract_hash))
+        matches = []
+        if spack.environment.active_environment():
+            matches = spack.environment.active_environment().get_by_hash(self.abstract_hash)
+        if not matches:
+            matches = spack.store.db.get_by_hash(self.abstract_hash)
+        if not matches:
+            query = spack.binary_distribution.BinaryCacheQuery(True)
+            matches = query(self.ctx.current_token.value)
+        if not matches:
+            raise spack.spec.NoSuchHashError(self.abstract_hash)
+
+        if len(matches) != 1:
+            raise spack.spec.AmbiguousHashError(
+                f"Multiple packages specify hash beginning '{self.abstract_hash}'.", *matches
+            )
+        return matches[0]
+
+    def replace_hash(self):
+        if not self.abstract_hash:
+            return
+        spec_by_hash = self.lookup_hash()
+        if not spec_by_hash._satisfies(self):
+            raise spack.spec.InvalidHashError(self, spec_by_hash.dag_hash())
+        self._dup(spec_by_hash)
+        print("I found {0} with dag hash {1}".format(self, self.dag_hash()))
 
     def to_node_dict(self, hash=ht.dag_hash):
         """Create a dictionary representing the state of this Spec.
@@ -2588,6 +2627,8 @@ class Spec(object):
             )
             warnings.warn(msg)
 
+        self.replace_hash()
+
         if not self.name:
             raise spack.error.SpecError("Attempting to concretize anonymous spec")
 
@@ -2785,6 +2826,8 @@ class Spec(object):
 
     def _new_concretize(self, tests=False):
         import spack.solver.asp
+
+        self.replace_hash()
 
         if not self.name:
             raise spack.error.SpecError("Spec has no name; cannot concretize an anonymous spec")
@@ -3351,6 +3394,8 @@ class Spec(object):
 
         other = self._autospec(other)
 
+        other.lookup_hash()
+
         if not (self.name == other.name or (not self.name) or (not other.name)):
             raise UnsatisfiableSpecNameError(self.name, other.name)
 
@@ -3573,7 +3618,19 @@ class Spec(object):
         else:
             return True
 
-    def _intersects_dependencies(self, other):
+    def satisfies(self, other, deps=True, strict=False):
+
+        other = self._autospec(other)
+
+        lhs = self.lookup_hash() or self
+        rhs = other.lookup_hash() or other
+
+        return lhs._satisfies(rhs, deps=deps, strict=strict)
+
+    def satisfies_dependencies(self, other, strict=False):
+        """
+        This checks constraints on common dependencies against each other.
+        """
         other = self._autospec(other)
 
         if not other._dependencies or not self._dependencies:
@@ -3755,6 +3812,7 @@ class Spec(object):
                 and self.external_path != other.external_path
                 and self.external_modules != other.external_modules
                 and self.compiler_flags != other.compiler_flags
+                and self.abstract_hash != other.abstract_hash
             )
 
         self._package = None
@@ -3796,6 +3854,10 @@ class Spec(object):
             self._dup_deps(other, deptypes)
 
         self._concrete = other._concrete
+
+        if self.abstract_hash:
+            print("Replacing dup abstract hash: {0} for spec {1}".format(other.abstract_hash, other.name))
+        self.abstract_hash = other.abstract_hash
 
         if self._concrete:
             self._dunder_hash = other._dunder_hash
