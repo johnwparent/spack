@@ -683,7 +683,7 @@ def test_dep_spec_by_hash(database, mutable_empty_config):
     # assert mpileaks_hash_zmpi.compiler == mpileaks_zmpi.compiler
 
     mpileaks_hash_fake_and_zmpi = SpecParser(
-        f"mpileaks ^ fake /{fake.dag_hash()[:4]} ^ zmpi /{zmpi.dag_hash()[:5]}"
+        f"mpileaks ^/{fake.dag_hash()[:4]} ^ /{zmpi.dag_hash()[:5]}"
     ).next_spec()
     nodes = mpileaks_hash_fake_and_zmpi.traverse()
     for node in nodes:
