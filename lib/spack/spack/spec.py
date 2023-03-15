@@ -3584,15 +3584,6 @@ class Spec(object):
         return Spec(spec_like)
 
     def intersects(self, other: "Spec", deps: bool = True) -> bool:
-
-        other = self._autospec(other)
-
-        lhs = self.lookup_hash() or self
-        rhs = other.lookup_hash() or other
-
-        return lhs._intersects(rhs, deps)
-
-    def _intersects(self, other: "Spec", deps: bool = True) -> bool:
         """Return True if there exists at least one concrete spec that matches both
         self and other, otherwise False.
 
@@ -3605,6 +3596,12 @@ class Spec(object):
         """
         other = self._autospec(other)
 
+        lhs = self.lookup_hash() or self
+        rhs = other.lookup_hash() or other
+
+        return lhs._intersects(rhs, deps)
+
+    def _intersects(self, other: "Spec", deps: bool = True) -> bool:
         if other.concrete and self.concrete:
             return self.dag_hash() == other.dag_hash()
 
@@ -3671,6 +3668,9 @@ class Spec(object):
             return True
 
     def satisfies(self, other, deps=True):
+        """
+        This checks constraints on common dependencies against each other.
+        """
         other = self._autospec(other)
 
         lhs = self.lookup_hash() or self
@@ -3679,10 +3679,6 @@ class Spec(object):
         return lhs._satisfies(rhs, deps=deps)
 
     def _intersects_dependencies(self, other):
-        """
-        This checks constraints on common dependencies against each other.
-        """
-        other = self._autospec(other)
 
         if not other._dependencies or not self._dependencies:
             # one spec *could* eventually satisfy the other
