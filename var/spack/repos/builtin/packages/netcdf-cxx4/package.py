@@ -4,11 +4,12 @@
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
 import os
+import sys
 
 from spack.package import *
+from spack.build_systems import autotools, cmake
 
-
-class NetcdfCxx4(AutotoolsPackage):
+class NetcdfCxx4(AutotoolsPackage, CMakePackage):
     """NetCDF (network Common Data Form) is a set of software libraries and
     machine-independent data formats that support the creation, access, and
     sharing of array-oriented scientific data. This is the C++ distribution."""
@@ -25,6 +26,8 @@ class NetcdfCxx4(AutotoolsPackage):
     variant("pic", default=True, description="Produce position-independent code (for shared libs)")
     variant("doc", default=False, description="Enable doxygen docs")
 
+    build_system("autotools", "cmake", default="autotools")
+
     depends_on("netcdf-c")
 
     depends_on("doxygen", when="+doc", type="build")
@@ -32,19 +35,21 @@ class NetcdfCxx4(AutotoolsPackage):
     filter_compiler_wrappers("ncxx4-config", relative_root="bin")
 
     def flag_handler(self, name, flags):
-        if name == "cflags" and "+pic" in self.spec:
-            flags.append(self.compiler.cc_pic_flag)
-        if name == "cxxflags" and "+pic" in self.spec:
-            flags.append(self.compiler.cxx_pic_flag)
-        elif name == "ldlibs":
+        # CMake system handles PIC logic
+        if "build_system=cmake" not in self.spec:
+            if name == "cflags" and "+pic" in self.spec:
+                flags.append(self.compiler.cc_pic_flag)
+            if name == "cxxflags" and "+pic" in self.spec:
+                flags.append(self.compiler.cxx_pic_flag)
+        if name == "ldlibs" and not sys.platform == "win32":
             # Address the underlinking problem reported in
             # https://github.com/Unidata/netcdf-cxx4/issues/86, which also
             # results into a linking error on macOS:
             flags.append(self.spec["netcdf-c"].libs.link_flags)
 
-        # Note that cflags and cxxflags should be added by the compiler wrapper
-        # and not on the command line to avoid overriding the default
-        # compilation flags set by the configure script:
+            # Note that cflags and cxxflags should be added by the compiler wrapper
+            # and not on the command line to avoid overriding the default
+            # compilation flags set by the configure script:
         return flags, None, None
 
     @property
@@ -89,6 +94,8 @@ class NetcdfCxx4(AutotoolsPackage):
             join_path(self.stage.source_path, "plugins", "Makefile.in"),
         )
 
+
+class AutotoolsBuilder(autotools.AutotoolsBuilder):
     def configure_args(self):
         config_args = self.enable_or_disable("shared")
 
@@ -141,3 +148,11 @@ class NetcdfCxx4(AutotoolsPackage):
     def check(self):
         with working_dir(self.build_directory):
             make("check", parallel=False)
+
+
+class CMakeBuilder(cmake.CMakeBuilder):
+    def cmake_args(self):
+        args = [self.define_from_variant("BUILD_SHARED_LIBS", "shared")]
+        args.append(self.define_from_variant("ENABLE_DOXYGEN", "doc"))
+
+        return args
