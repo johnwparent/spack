@@ -100,7 +100,7 @@ class MSBuildBuilder(MSBuildBuilder):
         return "64" in self.pkg.spec.target.family
 
     def msbuild_args(self):
-        plat = "x64" if self.is_64bit() else "x86"
+        plat = "x64"
         if self.pkg.spec.satisfies("libs=shared,static"):
             f = "xz_win.sln"
         elif self.pkg.spec.satisfies("libs=shared"):

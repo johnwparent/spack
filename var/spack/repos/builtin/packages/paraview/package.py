@@ -5,6 +5,7 @@
 
 import itertools
 import os
+import sys
 
 from spack.package import *
 
@@ -385,10 +386,11 @@ class Paraview(CMakePackage, CudaPackage, ROCmPackage):
 
         rendering = variant_bool("+opengl2", "OpenGL2", "OpenGL")
         includes = variant_bool("+development_files")
+        use_x11 = nvariant_bool("+osmesa") if not sys.platform == "win32" else "OFF"
 
         cmake_args = [
             "-DVTK_OPENGL_HAS_OSMESA:BOOL=%s" % variant_bool("+osmesa"),
-            "-DVTK_USE_X:BOOL=%s" % nvariant_bool("+osmesa"),
+            "-DVTK_USE_X:BOOL=%s" % use_x11,
             "-DPARAVIEW_INSTALL_DEVELOPMENT_FILES:BOOL=%s" % includes,
             "-DBUILD_TESTING:BOOL=OFF",
             "-DOpenGL_GL_PREFERENCE:STRING=LEGACY",
@@ -496,11 +498,24 @@ class Paraview(CMakePackage, CudaPackage, ROCmPackage):
                 [
                     "-DPARAVIEW_USE_MPI:BOOL=ON",
                     "-DMPIEXEC:FILEPATH=%s/bin/mpiexec" % spec["mpi"].prefix,
-                    "-DMPI_CXX_COMPILER:PATH=%s" % spec["mpi"].mpicxx,
-                    "-DMPI_C_COMPILER:PATH=%s" % spec["mpi"].mpicc,
-                    "-DMPI_Fortran_COMPILER:PATH=%s" % spec["mpi"].mpifc,
                 ]
             )
+            # if sys.platform == "win32":
+            #     cmake_args.extend(
+            #         [
+            #             self.define("MPI_LIB")
+
+            #         ]
+            #     )
+            # else:
+            #     cmake_args.extend(
+            #         [
+            #             "-DMPI_CXX_COMPILER:PATH=%s" % spec["mpi"].mpicxx,
+            #             "-DMPI_C_COMPILER:PATH=%s" % spec["mpi"].mpicc,
+            #             "-DMPI_Fortran_COMPILER:PATH=%s" % spec["mpi"].mpifc,
+            #         ]
+            #     )
+
 
         cmake_args.append("-DPARAVIEW_BUILD_SHARED_LIBS:BOOL=%s" % variant_bool("+shared"))
 

@@ -6,6 +6,7 @@
 import os
 import re
 import shutil
+import sys
 
 import llnl.util.tty as tty
 
@@ -343,9 +344,11 @@ class Hdf5(CMakePackage):
 
     # The parallel compiler wrappers (i.e. h5pcc, h5pfc, etc.) reference MPI
     # compiler wrappers and do not need to be changed.
-    filter_compiler_wrappers(
-        "h5cc", "h5hlcc", "h5fc", "h5hlfc", "h5c++", "h5hlc++", relative_root="bin"
-    )
+    # These are not present on Windows, skip this step
+    if not sys.platform == "win32":
+        filter_compiler_wrappers(
+            "h5cc", "h5hlcc", "h5fc", "h5hlfc", "h5c++", "h5hlc++", relative_root="bin"
+        )
 
     def url_for_version(self, version):
         url = (

@@ -3,3 +3,4 @@ config:
   concretizer: clingo
   build_stage::
     - 'C:/spack'
+  stage_hash_length: 7
