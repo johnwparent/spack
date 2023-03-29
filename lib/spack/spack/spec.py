@@ -1897,8 +1897,8 @@ class Spec(object):
 
         spec_by_hash = self.lookup_hash()
 
-        if spec_by_hash != self or not self.eq_dag(spec_by_hash):
-            self._dup(spec_by_hash)
+        # if spec_by_hash != self or not self.eq_dag(spec_by_hash):
+        self._dup(spec_by_hash)
 
     def to_node_dict(self, hash=ht.dag_hash):
         """Create a dictionary representing the state of this Spec.
@@ -4085,6 +4085,7 @@ class Spec(object):
         yield self.compiler
         yield self.compiler_flags
         yield self.architecture
+        yield self.abstract_hash
 
         # this is not present on older specs
         yield getattr(self, "_package_hash", None)
