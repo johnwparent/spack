@@ -75,7 +75,7 @@ jobs:
   #   needs: [ prechecks, changes ]
   #   uses: ./.github/workflows/unit_tests.yaml
   windows:
-    if: ${{ github.repository == 'spack/spack' && needs.changes.outputs.core == 'true' }}
+    if: ${{ github.repository == 'johnwparent/spack' && needs.changes.outputs.core == 'true' }}
     needs: [ prechecks ]
     uses: ./.github/workflows/windows_python.yml
   all:
