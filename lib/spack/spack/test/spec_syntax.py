@@ -633,8 +633,14 @@ def test_spec_by_hash_tokens(text, tokens):
 @pytest.mark.db
 def test_spec_by_hash(database, monkeypatch, mutable_empty_config):
     mpileaks = database.query_one("mpileaks ^zmpi")
-    comp_lst = ";".join(spack.compilers.all_compilers())
+    comp_lst = ";".join([str(x) for x in spack.compilers.all_compilers()])
     print(f"SPACK COMPILERS: {comp_lst}")
+
+    comp_from_conf = ";".join([str(x) for x in spack.config.get("compilers")])
+    print(f"SPACK CONFIG COMPILERS: {comp_from_conf}")
+
+    conf_file = spack.config.config.get_config_filename("user", "compilers")
+    print(f"CONFIG FILE: {conf_file}")
     b = spack.spec.Spec("b").concretized()
     monkeypatch.setattr(spack.binary_distribution, "update_cache_and_get_specs", lambda: [b])
 
