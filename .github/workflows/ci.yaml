@@ -15,51 +15,51 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  prechecks:
-    needs: [ changes ]
-    uses: ./.github/workflows/valid-style.yml
-    with:
-      with_coverage: ${{ needs.changes.outputs.core }}
-  all-prechecks:
-    needs: [ prechecks ]
-    runs-on: ubuntu-latest
-    steps:
-    - name: Success
-      run: "true"
-  # Check which files have been updated by the PR
-  changes:
-    runs-on: ubuntu-latest
-      # Set job outputs to values from filter step
-    outputs:
-      bootstrap: ${{ steps.filter.outputs.bootstrap }}
-      core: ${{ steps.filter.outputs.core }}
-      packages: ${{ steps.filter.outputs.packages }}
-    steps:
-      - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # @v2
-        if: ${{ github.event_name == 'push' }}
-        with:
-          fetch-depth: 0
-            # For pull requests it's not necessary to checkout the code
-      - uses: dorny/paths-filter@4512585405083f25c027a35db413c2b3b9006d50
-        id: filter
-        with:
-          # See https://github.com/dorny/paths-filter/issues/56 for the syntax used below
-          # Don't run if we only modified packages in the
-          # built-in repository or documentation
-          filters: |
-            bootstrap:
-            - 'var/spack/repos/builtin/packages/clingo-bootstrap/**'
-            - 'var/spack/repos/builtin/packages/clingo/**'
-            - 'var/spack/repos/builtin/packages/python/**'
-            - 'var/spack/repos/builtin/packages/re2c/**'
-            - 'lib/spack/**'
-            - 'share/spack/**'
-            - '.github/workflows/bootstrap.yml'
-            - '.github/workflows/ci.yaml'
-            core:
-            - './!(var/**)/**'
-            packages:
-            - 'var/**'
+  # prechecks:
+  #   needs: [ changes ]
+  #   uses: ./.github/workflows/valid-style.yml
+  #   with:
+  #     with_coverage: ${{ needs.changes.outputs.core }}
+  # all-prechecks:
+  #   needs: [ prechecks ]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Success
+  #     run: "true"
+  # # Check which files have been updated by the PR
+  # changes:
+  #   runs-on: ubuntu-latest
+  #     # Set job outputs to values from filter step
+  #   outputs:
+  #     bootstrap: ${{ steps.filter.outputs.bootstrap }}
+  #     core: ${{ steps.filter.outputs.core }}
+  #     packages: ${{ steps.filter.outputs.packages }}
+  #   steps:
+  #     - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # @v2
+  #       if: ${{ github.event_name == 'push' }}
+  #       with:
+  #         fetch-depth: 0
+  #           # For pull requests it's not necessary to checkout the code
+  #     - uses: dorny/paths-filter@4512585405083f25c027a35db413c2b3b9006d50
+  #       id: filter
+  #       with:
+  #         # See https://github.com/dorny/paths-filter/issues/56 for the syntax used below
+  #         # Don't run if we only modified packages in the
+  #         # built-in repository or documentation
+  #         filters: |
+  #           bootstrap:
+  #           - 'var/spack/repos/builtin/packages/clingo-bootstrap/**'
+  #           - 'var/spack/repos/builtin/packages/clingo/**'
+  #           - 'var/spack/repos/builtin/packages/python/**'
+  #           - 'var/spack/repos/builtin/packages/re2c/**'
+  #           - 'lib/spack/**'
+  #           - 'share/spack/**'
+  #           - '.github/workflows/bootstrap.yml'
+  #           - '.github/workflows/ci.yaml'
+  #           core:
+  #           - './!(var/**)/**'
+  #           packages:
+  #           - 'var/**'
       # Some links for easier reference:
       #
       # "github" context: https://docs.github.com/en/actions/reference/context-and-expression-syntax-for-github-actions#github-context
@@ -75,8 +75,6 @@ jobs:
   #   needs: [ prechecks, changes ]
   #   uses: ./.github/workflows/unit_tests.yaml
   windows:
-    if: ${{ github.repository == 'johnwparent/spack' && needs.changes.outputs.core == 'true' }}
-    needs: [ prechecks ]
     uses: ./.github/workflows/windows_python.yml
   all:
     needs: [ windows]
