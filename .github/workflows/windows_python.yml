@@ -17,12 +17,12 @@ jobs:
     steps:
     - name: Create path with space for checkout
       run: |
-        mkdir ".\spack with space"
+        mkdir "./spack with space"
     - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       with:
         fetch-depth: 0
-        path: ".\spack with space"
-    - uses: actions/setup-python@57ded4d7d5e986d7296eab16560982c6dd7c923b
+        path: "./spack with space"
+    - uses: actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435
       with:
         python-version: 3.9
     - name: Install Python packages
@@ -45,12 +45,12 @@ jobs:
     steps:
     - name: Create path with space for checkout
       run: |
-        mkdir ".\spack with space"
+        mkdir "./spack with space"
     - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       with:
         fetch-depth: 0
-        path: ".\spack with space"
-    - uses: actions/setup-python@57ded4d7d5e986d7296eab16560982c6dd7c923b
+        path: "./spack with space"
+    - uses: actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435
       with:
         python-version: 3.9
     - name: Install Python packages
@@ -73,12 +73,12 @@ jobs:
     steps:
     - name: Create path with space for checkout
       run: |
-        mkdir ".\spack with space"
+        mkdir "./spack with space"
     - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       with:
         fetch-depth: 0
-        path: ".\spack with space"
-    - uses: actions/setup-python@57ded4d7d5e986d7296eab16560982c6dd7c923b
+        path: "./spack with space"
+    - uses: actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435
       with:
         python-version: 3.9
     - name: Install Python packages
