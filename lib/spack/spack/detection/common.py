@@ -257,6 +257,10 @@ class WindowsCompilerExternalPaths(object):
             + WindowsCompilerExternalPaths.find_windows_compiler_ninja_paths()
         )
 
+    @staticmethod
+    def nothing():
+        pass
+
 
 class WindowsKitExternalPaths(object):
     if sys.platform == "win32":

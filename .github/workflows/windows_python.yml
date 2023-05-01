@@ -10,15 +10,19 @@ concurrency:
 defaults:
   run:
     shell:
-     powershell Invoke-Expression -Command "./share/spack/qa/windows_test_setup.ps1"; {0}
+     powershell "./spack with space share/spack/qa/windows_test_setup.ps1"; {0}
 jobs:
   unit-tests:
     runs-on: windows-latest
     steps:
+    - name: Create path with space for checkout
+      run: |
+        mkdir "./spack with space"
     - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       with:
         fetch-depth: 0
-    - uses: actions/setup-python@57ded4d7d5e986d7296eab16560982c6dd7c923b
+        path: "./spack with space"
+    - uses: actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435
       with:
         python-version: 3.9
     - name: Install Python packages
@@ -26,11 +30,11 @@ jobs:
           python -m pip install --upgrade pip six pywin32 setuptools pytest-cov clingo
     - name: Create local develop
       run: |
-        ./.github/workflows/setup_git.ps1
+        "./spack with space/.github/workflows/setup_git.ps1"
     - name: Unit Test
       run: |
         spack unit-test -x --verbose --cov --cov-config=pyproject.toml --ignore=lib/spack/spack/test/cmd
-        ./share/spack/qa/validate_last_exit.ps1
+        "./spack with space/share/spack/qa/validate_last_exit.ps1"
         coverage combine -a
         coverage xml
     - uses: codecov/codecov-action@894ff025c7b54547a9a2a1e9f228beae737ad3c2
@@ -39,10 +43,14 @@ jobs:
   unit-tests-cmd:
     runs-on: windows-latest
     steps:
+    - name: Create path with space for checkout
+      run: |
+        mkdir "./spack with space"
     - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       with:
         fetch-depth: 0
-    - uses: actions/setup-python@57ded4d7d5e986d7296eab16560982c6dd7c923b
+        path: "./spack with space"
+    - uses: actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435
       with:
         python-version: 3.9
     - name: Install Python packages
@@ -50,11 +58,11 @@ jobs:
           python -m pip install --upgrade pip six pywin32 setuptools coverage pytest-cov clingo
     - name: Create local develop
       run: |
-        ./.github/workflows/setup_git.ps1
+        "./spack with space/.github/workflows/setup_git.ps1"
     - name: Command Unit Test
       run: |
         spack unit-test -x --verbose --cov --cov-config=pyproject.toml lib/spack/spack/test/cmd
-        ./share/spack/qa/validate_last_exit.ps1
+        "./spack with space/share/spack/qa/validate_last_exit.ps1"
         coverage combine -a
         coverage xml
     - uses: codecov/codecov-action@894ff025c7b54547a9a2a1e9f228beae737ad3c2
@@ -63,10 +71,14 @@ jobs:
   build-abseil:
     runs-on: windows-latest
     steps:
+    - name: Create path with space for checkout
+      run: |
+        mkdir "./spack with space"
     - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       with:
         fetch-depth: 0
-    - uses: actions/setup-python@57ded4d7d5e986d7296eab16560982c6dd7c923b
+        path: "./spack with space"
+    - uses: actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435
       with:
         python-version: 3.9
     - name: Install Python packages
