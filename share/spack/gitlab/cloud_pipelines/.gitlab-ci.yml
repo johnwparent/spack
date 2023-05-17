@@ -269,10 +269,6 @@ default:
       - always
   tags: ["spack", "public", "medium", "x86_64", "norun"]
 
-.generate-aarch64:
-  extends: [ ".base-job", ".generate" ]
-  tags: ["spack", "public", "medium", "aarch64", "norun"]
-
 .build:
   extends: [ ".base-job" ]
   stage: build
@@ -426,7 +422,7 @@ e4s-rocm-external-generate:
   extends: [ ".e4s-rocm-external", ".generate-x86_64"]
   image: ecpe4s/ubuntu22.04-runner-amd64-gcc-11.4-rocm5.7.1:2024.03.01
 
-e4s-rocm-external-build:
+e4s-rcom-external-build:
   extends: [ ".e4s-rocm-external", ".build" ]
   trigger:
     include:
@@ -446,8 +442,8 @@ e4s-rocm-external-build:
 #     SPACK_CI_STACK_NAME: gpu-tests
 
 # gpu-tests-generate:
-#   extends: [ ".gpu-tests", ".generate-x86_64"]
-#   image: ghcr.io/spack/ubuntu20.04-runner-x86_64:2023-01-01
+#   extends: [ ".gpu-tests", ".generate"]
+#   image: ecpe4s/ubuntu20.04-runner-x86_64:2023-01-01
 
 # gpu-tests-build:
 #   extends: [ ".gpu-tests", ".build" ]
@@ -469,8 +465,8 @@ e4s-rocm-external-build:
     SPACK_CI_STACK_NAME: e4s-oneapi
 
 e4s-oneapi-generate:
-  extends: [ ".e4s-oneapi", ".generate-x86_64"]
-  image:  ghcr.io/spack/ubuntu22.04-runner-amd64-oneapi-2024.0.0:2024.01.16b
+  extends: [ ".e4s-oneapi", ".generate"]
+  image: ecpe4s/ubuntu20.04-runner-x86_64-oneapi:2023.07.21
 
 e4s-oneapi-build:
   extends: [ ".e4s-oneapi", ".build" ]
@@ -487,7 +483,7 @@ e4s-oneapi-build:
 # E4S on Power
 ########################################
 .e4s-power-generate-tags-and-image:
-  image: { "name": "ghcr.io/spack/ubuntu20.04-runner-ppc64-gcc-11.4:2023.08.01", "entrypoint": [""] }
+  image: { "name": "ecpe4s/ubuntu20.04-runner-ppc64le:2023-01-01", "entrypoint": [""] }
   tags: ["spack", "public", "large", "ppc64le"]
 
 .e4s-power:
@@ -496,7 +492,7 @@ e4s-oneapi-build:
     SPACK_CI_STACK_NAME: e4s-power
 
 e4s-power-generate:
-  extends: [ ".e4s-power", ".generate-x86_64", ".e4s-power-generate-tags-and-image"]
+  extends: [ ".e4s-power", ".generate", ".e4s-power-generate-tags-and-image"]
 
 e4s-power-build:
   extends: [ ".e4s-power", ".build" ]
@@ -518,7 +514,7 @@ e4s-power-build:
     SPACK_CI_STACK_NAME: build_systems
 
 build_systems-generate:
-  extends: [ ".build_systems", ".generate-x86_64"]
+  extends: [ ".build_systems", ".generate"]
 
 build_systems-build:
   extends: [ ".build_systems", ".build" ]
@@ -530,28 +526,6 @@ build_systems-build:
   needs:
     - artifacts: True
       job: build_systems-generate
-
-###########################################
-# Build tests for different developer tools
-###########################################
-.developer-tools:
-  extends: [ ".linux_x86_64_v3" ]
-  variables:
-    SPACK_CI_STACK_NAME: developer-tools
-
-developer-tools-generate:
-  extends: [ ".developer-tools", ".generate-x86_64"]
-
-developer-tools-build:
-  extends: [ ".developer-tools", ".build" ]
-  trigger:
-    include:
-      - artifact: jobs_scratch_dir/cloud-ci-pipeline.yml
-        job: developer-tools-generate
-    strategy: depend
-  needs:
-    - artifacts: True
-      job: developer-tools-generate
 
 ###########################################
 # Build tests for different developer tools
@@ -586,7 +560,7 @@ developer-tools-manylinux2014-build:
     SPACK_CI_STACK_NAME: radiuss
 
 radiuss-generate:
-  extends: [ ".radiuss", ".generate-x86_64" ]
+  extends: [ ".radiuss", ".generate" ]
 
 radiuss-build:
   extends: [ ".radiuss", ".build" ]
@@ -621,7 +595,7 @@ radiuss-build:
     SPACK_CI_STACK_NAME: radiuss-aws
 
 radiuss-aws-generate:
-  extends: [ ".radiuss-aws", ".generate-x86_64", ".radiuss-aws-overrides", ".tags-x86_64_v4" ]
+  extends: [ ".radiuss-aws", ".generate", ".radiuss-aws-overrides", ".tags-x86_64_v4" ]
 
 radiuss-aws-build:
   extends: [ ".radiuss-aws", ".build" ]
@@ -665,8 +639,8 @@ radiuss-aws-aarch64-build:
     SPACK_CI_STACK_NAME: data-vis-sdk
 
 data-vis-sdk-generate:
-  extends: [ ".data-vis-sdk", ".generate-x86_64"]
-  image: ghcr.io/spack/ubuntu20.04-runner-x86_64:2023-01-01
+  extends: [ ".data-vis-sdk", ".generate"]
+  image: ecpe4s/ubuntu20.04-runner-x86_64:2023-01-01
 
 data-vis-sdk-build:
   extends: [ ".data-vis-sdk", ".build" ]
@@ -679,9 +653,9 @@ data-vis-sdk-build:
     - artifacts: True
       job: data-vis-sdk-generate
 
-########################################
-# AWS ISC Applications (x86_64)
-########################################
+#######################################
+AWS ISC Applications (x86_64)
+#######################################
 
 # Call this AFTER .*-generate
 .aws-isc-overrides:
@@ -695,7 +669,7 @@ data-vis-sdk-build:
     SPACK_CI_STACK_NAME: aws-isc
 
 aws-isc-generate:
-  extends: [ ".aws-isc", ".generate-x86_64", ".aws-isc-overrides", ".tags-x86_64_v4" ]
+  extends: [ ".aws-isc", ".generate", ".aws-isc-overrides", ".tags-x86_64_v4" ]
 
 aws-isc-build:
   extends: [ ".aws-isc", ".build" ]
@@ -739,8 +713,8 @@ aws-isc-aarch64-build:
     SPACK_CI_STACK_NAME: tutorial
 
 tutorial-generate:
-  extends: [ ".tutorial", ".generate-x86_64"]
-  image: ghcr.io/spack/tutorial-ubuntu-22.04:v2023-10-30
+  extends: [ ".tutorial", ".generate"]
+  image: ghcr.io/spack/tutorial-ubuntu-22.04:v2023-05-07
 
 tutorial-build:
   extends: [ ".tutorial", ".build" ]
@@ -762,8 +736,8 @@ tutorial-build:
     SPACK_CI_STACK_NAME: ml-linux-x86_64-cpu
 
 ml-linux-x86_64-cpu-generate:
-  extends: [ ".generate-x86_64", .ml-linux-x86_64-cpu, ".tags-x86_64_v4" ]
-  image: ghcr.io/spack/linux-ubuntu22.04-x86_64_v2:v2024-01-29
+  extends: [ ".generate", .ml-linux-x86_64-cpu, ".tags-x86_64_v4" ]
+  image: ghcr.io/spack/linux-ubuntu22.04-x86_64_v2:nightly
 
 ml-linux-x86_64-cpu-build:
   extends: [ ".build", ".ml-linux-x86_64-cpu" ]
@@ -785,8 +759,8 @@ ml-linux-x86_64-cpu-build:
     SPACK_CI_STACK_NAME: ml-linux-x86_64-cuda
 
 ml-linux-x86_64-cuda-generate:
-  extends: [ ".generate-x86_64", .ml-linux-x86_64-cuda, ".tags-x86_64_v4" ]
-  image: ghcr.io/spack/linux-ubuntu22.04-x86_64_v2:v2024-01-29
+  extends: [ ".generate", .ml-linux-x86_64-cuda, ".tags-x86_64_v4" ]
+  image: ghcr.io/spack/linux-ubuntu22.04-x86_64_v2:nightly
 
 ml-linux-x86_64-cuda-build:
   extends: [ ".build", ".ml-linux-x86_64-cuda"  ]
@@ -876,11 +850,6 @@ aws-pcluster-build-x86_64_v4:
   needs:
     - artifacts: True
       job: aws-pcluster-generate-x86_64_v4
-
-# Neoverse_v1 (one pipeline per target)
-.aws-pcluster-neoverse_v1:
-  variables:
-    SPACK_CI_STACK_NAME: aws-pcluster-neoverse_v1
 
 aws-pcluster-generate-neoverse_v1:
   # TODO: Use updated runner tags: https://github.com/spack/spack-infrastructure/pull/694/files
