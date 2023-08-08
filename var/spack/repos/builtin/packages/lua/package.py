@@ -13,9 +13,34 @@ from spack.package import *
 from spack.util.executable import Executable
 
 
+class LuaDepEnvHelper:
+    @classmethod
+    def _setup_dependent_env_helper(pkg, env, dependent_spec):
+        lua_paths = []
+        for d in dependent_spec.traverse(deptype=("build", "run")):
+            if d.package.extends(pkg.spec):
+                lua_paths.append(os.path.join(d.prefix, pkg.lua_lib_dir))
+                lua_paths.append(os.path.join(d.prefix, pkg.lua_lib64_dir))
+                lua_paths.append(os.path.join(d.prefix, pkg.lua_share_dir))
+
+        lua_patterns = []
+        lua_cpatterns = []
+        for p in lua_paths:
+            if os.path.isdir(p):
+                pkg.append_paths(lua_patterns, lua_cpatterns, p)
+
+        # Always add this package's paths
+        for p in (
+            os.path.join(pkg.spec.prefix, pkg.lua_lib_dir),
+            os.path.join(pkg.spec.prefix, pkg.lua_lib64_dir),
+            os.path.join(pkg.spec.prefix, pkg.lua_share_dir),
+        ):
+            pkg.append_paths(lua_patterns, lua_cpatterns, p)
+
+        return lua_patterns, lua_cpatterns
 
 
-class LuaBaseMixin(MakefilePackage):
+class LuaBaseMixin(MakefilePackage, LuaDepEnvHelper):
     """Base class defining common Lua implementation package details"""
     extendable = True
 
@@ -122,31 +147,6 @@ class LuaBaseMixin(MakefilePackage):
     def luarocks(self):
         return Executable(self.spec.prefix.bin.luarocks)
 
-    @classmethod
-    def _setup_dependent_env_helper(pkg, env, dependent_spec):
-        lua_paths = []
-        for d in dependent_spec.traverse(deptype=("build", "run")):
-            if d.package.extends(pkg.spec):
-                lua_paths.append(os.path.join(d.prefix, pkg.lua_lib_dir))
-                lua_paths.append(os.path.join(d.prefix, pkg.lua_lib64_dir))
-                lua_paths.append(os.path.join(d.prefix, pkg.lua_share_dir))
-
-        lua_patterns = []
-        lua_cpatterns = []
-        for p in lua_paths:
-            if os.path.isdir(p):
-                pkg.append_paths(lua_patterns, lua_cpatterns, p)
-
-        # Always add this package's paths
-        for p in (
-            os.path.join(pkg.spec.prefix, pkg.lua_lib_dir),
-            os.path.join(pkg.spec.prefix, pkg.lua_lib64_dir),
-            os.path.join(pkg.spec.prefix, pkg.lua_share_dir),
-        ):
-            pkg.append_paths(lua_patterns, lua_cpatterns, p)
-
-        return lua_patterns, lua_cpatterns
-
     def setup_dependent_run_environment(self, env, dependent_spec):
         # For run time environment set only the path for dependent_spec and
         # prepend it to LUAPATH
@@ -190,7 +190,7 @@ class LuaBaseMixin(MakefilePackage):
         module.luarocks = Executable(self.spec.prefix.bin.luarocks)
 
 
-class LuaBuilderMixin:
+class LuaBuilderMixin(LuaDepEnvHelper):
     """Class containing common methods needed to setup the build environment
     for Lua and dependent packages typically found in the builder class"""
 
