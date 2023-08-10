@@ -14,28 +14,27 @@ from spack.util.executable import Executable
 
 
 class LuaDepEnvHelper:
-    @classmethod
-    def _setup_dependent_env_helper(pkg, env, dependent_spec):
+    def _setup_dependent_env_helper(self, env, dependent_spec):
         lua_paths = []
         for d in dependent_spec.traverse(deptype=("build", "run")):
-            if d.package.extends(pkg.spec):
-                lua_paths.append(os.path.join(d.prefix, pkg.lua_lib_dir))
-                lua_paths.append(os.path.join(d.prefix, pkg.lua_lib64_dir))
-                lua_paths.append(os.path.join(d.prefix, pkg.lua_share_dir))
+            if d.package.extends(self.spec):
+                lua_paths.append(os.path.join(d.prefix, self.spec.package.lua_lib_dir))
+                lua_paths.append(os.path.join(d.prefix, self.spec.package.lua_lib64_dir))
+                lua_paths.append(os.path.join(d.prefix, self.spec.package.lua_share_dir))
 
         lua_patterns = []
         lua_cpatterns = []
         for p in lua_paths:
             if os.path.isdir(p):
-                pkg.append_paths(lua_patterns, lua_cpatterns, p)
+                self.spec.package.append_paths(lua_patterns, lua_cpatterns, p)
 
         # Always add this package's paths
         for p in (
-            os.path.join(pkg.spec.prefix, pkg.lua_lib_dir),
-            os.path.join(pkg.spec.prefix, pkg.lua_lib64_dir),
-            os.path.join(pkg.spec.prefix, pkg.lua_share_dir),
+            os.path.join(self.spec.prefix, self.spec.package.lua_lib_dir),
+            os.path.join(self.spec.prefix, self.spec.package.lua_lib64_dir),
+            os.path.join(self.spec.prefix, self.spec.package.lua_share_dir),
         ):
-            pkg.append_paths(lua_patterns, lua_cpatterns, p)
+            self.spec.package.append_paths(lua_patterns, lua_cpatterns, p)
 
         return lua_patterns, lua_cpatterns
 
