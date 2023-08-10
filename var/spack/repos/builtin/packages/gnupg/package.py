@@ -132,6 +132,8 @@ class Gnupg(AutotoolsPackage):
     # Getting some linking error.
     conflicts("%gcc@10:", when="@:1")
 
+    provides("gpg")
+
     @run_after("install")
     def add_gpg2_symlink(self):
         if self.spec.satisfies("@2.0:2"):

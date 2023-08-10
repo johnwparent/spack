@@ -24,6 +24,7 @@ class Gpg4win(Package):
     version("4.0.0", sha256="f83be101c5e9c23740d6fde55fd8fefebf4fafb7badcb3756d1f574b5ad37507", expand=False)
     version("3.1.16", sha256="c499213ff3e14e93c3b245546994cc0e654ec267b40a188788665ae8f4e9f5ad", expand=False)
 
+    provides("gpg")
 
     def url_for_version(self, version):
         return f"https://files.gpg4win.org/gpg4win-{str(version)}.exe"
