@@ -3,10 +3,12 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
+import spack.build_systems.autotools
+import spack.build_systems.cmake
 from spack.package import *
 
 
-class Libgeotiff(AutotoolsPackage):
+class Libgeotiff(CMakePackage, AutotoolsPackage):
     """GeoTIFF represents an effort by over 160 different remote sensing, GIS,
     cartographic, and surveying related companies and organizations to
     establish a TIFF based interchange format for georeferenced raster imagery.
@@ -38,6 +40,8 @@ class Libgeotiff(AutotoolsPackage):
     depends_on("proj@:5", when="@:1.4+proj")
     depends_on("proj@6:", when="@1.5:+proj")
 
+    build_system("autotools", "cmake", default="autotools")
+
     # Patches required to fix rounding issues in unit tests
     # https://github.com/OSGeo/libgeotiff/issues/16
     patch(
@@ -56,6 +60,9 @@ class Libgeotiff(AutotoolsPackage):
     # https://github.com/OSGeo/libgeotiff/issues/16
     patch("a76c686441398669422cb728411abd2dec358f7f.patch", level=2, when="@1.5.0:1.5.1")
 
+
+
+class AutotoolsBuilder(spack.build_systems.autotools.AutotoolsBuilder):
     def configure_args(self):
         spec = self.spec
 
@@ -76,4 +83,14 @@ class Libgeotiff(AutotoolsPackage):
         else:
             args.append("--with-proj=no")
 
+        return args
+
+class CMakeBuilder(spack.build_systems.cmake.CMakeBuilder):
+    def cmake_args(self):
+        args = [
+            self.define("PROJ_TESTS", "OFF"),
+            self.define_from_variant("WITH_ZLIB", "zlib"),
+            self.define_from_variant("WITH_JPEG", "jpeg"),
+            self.define_from_variant("WITH_PROJ", "proj")
+        ]
         return args
