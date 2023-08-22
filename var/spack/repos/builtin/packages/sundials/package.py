@@ -294,6 +294,8 @@ class Sundials(CMakePackage, CudaPackage, ROCmPackage):
     patch("SundialsAddLibrary_no_dup_targets.patch", when="platform=windows")
     # Fix lack of link to MPI with MPI dependent targets with MSVC
     patch("sundials-link-mpi-when-enabled.patch", when="platform=windows")
+    # Fix incorrect invocation of `target_include_directories`
+    patch("target_scope.patch")
     # ==========================================================================
     # SUNDIALS Settings
     # ==========================================================================
