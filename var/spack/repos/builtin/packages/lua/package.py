@@ -312,5 +312,4 @@ class MakefileBuilder(spack.build_systems.makefile.MakefileBuilder, LuaBuilderMi
 
 
 class CMakeBuilder(spack.build_systems.cmake.CMakeBuilder, LuaBuilderMixin):
-    def cmake_args(self):
-        return [self.define("BUILD_SHARED_LIBS", True)]
+    """CMake builder for Lua package"""
