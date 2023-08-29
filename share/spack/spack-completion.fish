@@ -1412,7 +1412,7 @@ complete -c spack -n '__fish_spack_using_command env activate' -s d -l dir -r -f
 complete -c spack -n '__fish_spack_using_command env activate' -s d -l dir -r -d 'activate the environment in this directory'
 
 # spack env deactivate
-set -g __fish_spack_optspecs_spack_env_deactivate h/help sh csh fish bat
+set -g __fish_spack_optspecs_spack_env_deactivate h/help sh csh fish bat pwsh
 complete -c spack -n '__fish_spack_using_command env deactivate' -s h -l help -f -a help
 complete -c spack -n '__fish_spack_using_command env deactivate' -s h -l help -d 'show this help message and exit'
 complete -c spack -n '__fish_spack_using_command env deactivate' -l sh -f -a shell
@@ -1423,6 +1423,8 @@ complete -c spack -n '__fish_spack_using_command env deactivate' -l fish -f -a s
 complete -c spack -n '__fish_spack_using_command env deactivate' -l fish -d 'print fish commands to activate the environment'
 complete -c spack -n '__fish_spack_using_command env deactivate' -l bat -f -a shell
 complete -c spack -n '__fish_spack_using_command env deactivate' -l bat -d 'print bat commands to activate the environment'
+complete -c spack -n '__fish_spack_using_command env deactivate' -l pwsh -f -a shell
+complete -c spack -n '__fish_spack_using_command env deactivate' -l pwsh -d 'print pwsh commands to activate the environment'
 
 # spack env create
 set -g __fish_spack_optspecs_spack_env_create h/help d/dir keep-relative without-view with-view=
@@ -1942,7 +1944,7 @@ complete -c spack -n '__fish_spack_using_command list' -l update -r -f -a update
 complete -c spack -n '__fish_spack_using_command list' -l update -r -d 'write output to the specified file, if any package is newer'
 
 # spack load
-set -g __fish_spack_optspecs_spack_load h/help sh csh fish bat first only= list
+set -g __fish_spack_optspecs_spack_load h/help sh csh fish bat pwsh first only= list
 complete -c spack -n '__fish_spack_using_command_pos_remainder 0 load' -f -a '(__fish_spack_installed_specs)'
 complete -c spack -n '__fish_spack_using_command load' -s h -l help -f -a help
 complete -c spack -n '__fish_spack_using_command load' -s h -l help -d 'show this help message and exit'
@@ -1954,6 +1956,8 @@ complete -c spack -n '__fish_spack_using_command load' -l fish -f -a shell
 complete -c spack -n '__fish_spack_using_command load' -l fish -d 'print fish commands to load the package'
 complete -c spack -n '__fish_spack_using_command load' -l bat -f -a shell
 complete -c spack -n '__fish_spack_using_command load' -l bat -d 'print bat commands to load the package'
+complete -c spack -n '__fish_spack_using_command load' -l pwsh -f -a shell
+complete -c spack -n '__fish_spack_using_command load' -l pwsh -d 'print pwsh commands to load the package'
 complete -c spack -n '__fish_spack_using_command load' -l first -f -a load_first
 complete -c spack -n '__fish_spack_using_command load' -l first -d 'load the first match if multiple packages match the spec'
 complete -c spack -n '__fish_spack_using_command load' -l only -r -f -a 'package dependencies'
@@ -2815,7 +2819,7 @@ complete -c spack -n '__fish_spack_using_command unit-test' -l showlocals -f -a 
 complete -c spack -n '__fish_spack_using_command unit-test' -l showlocals -d 'show local variable values in tracebacks'
 
 # spack unload
-set -g __fish_spack_optspecs_spack_unload h/help sh csh fish bat a/all
+set -g __fish_spack_optspecs_spack_unload h/help sh csh fish bat pwsh a/all
 complete -c spack -n '__fish_spack_using_command_pos_remainder 0 unload' -f -a '(__fish_spack_installed_specs)'
 complete -c spack -n '__fish_spack_using_command unload' -s h -l help -f -a help
 complete -c spack -n '__fish_spack_using_command unload' -s h -l help -d 'show this help message and exit'
@@ -2827,6 +2831,8 @@ complete -c spack -n '__fish_spack_using_command unload' -l fish -f -a shell
 complete -c spack -n '__fish_spack_using_command unload' -l fish -d 'print fish commands to load the package'
 complete -c spack -n '__fish_spack_using_command unload' -l bat -f -a shell
 complete -c spack -n '__fish_spack_using_command unload' -l bat -d 'print bat commands to load the package'
+complete -c spack -n '__fish_spack_using_command unload' -l pwsh -f -a shell
+complete -c spack -n '__fish_spack_using_command unload' -l pwsh -d 'print pwsh commands to load the package'
 complete -c spack -n '__fish_spack_using_command unload' -s a -l all -f -a all
 complete -c spack -n '__fish_spack_using_command unload' -s a -l all -d 'unload all loaded Spack packages'
 
