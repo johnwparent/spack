@@ -296,6 +296,8 @@ class Sundials(CMakePackage, CudaPackage, ROCmPackage):
     patch("sundials-link-mpi-when-enabled.patch", when="platform=windows")
     # Fix incorrect invocation of `target_include_directories`
     patch("sundials_linsol_spbcgs_target_scoping.patch")
+    # Fix lack of #includes for referenced identifiers
+    patch("examples_include_string.patch", when="platform=windows")
     # ==========================================================================
     # SUNDIALS Settings
     # ==========================================================================
