@@ -291,13 +291,15 @@ class Sundials(CMakePackage, CudaPackage, ROCmPackage):
     # fix issues with exported PETSc target(s) in SUNDIALSConfig.cmake
     patch("sundials-v5.8.0.patch", when="@5.8.0")
     # Fix static and import lib naming clash with ninja generator and MSVC
-    patch("SundialsAddLibrary_no_dup_targets.patch", when="platform=windows")
+    patch("SundialsAddLibrary_no_dup_targets.patch", when="@6.0.0: platform=windows")
     # Fix lack of link to MPI with MPI dependent targets with MSVC
-    patch("sundials-link-mpi-when-enabled.patch", when="platform=windows")
+    patch("sundials-link-mpi-when-enabled.patch", when="@6.0.0: platform=windows")
     # Fix incorrect invocation of `target_include_directories`
-    patch("sundials_linsol_spbcgs_target_scoping.patch")
+    patch("sundials_linsol_spbcgs_target_scoping.patch", when="@6.0.0:")
     # Fix lack of #includes for referenced identifiers
-    patch("examples_include_string.patch", when="platform=windows")
+    patch("examples_include_string.patch", when="@6.0.0: platform=windows")
+    # Fix a large number of CMake mistakes in Sundials pre v6
+    patch("sundials-5.4.0-prevent-lib-name-collision.patch", when="@:6.0.0 platform=windows")
     # ==========================================================================
     # SUNDIALS Settings
     # ==========================================================================
