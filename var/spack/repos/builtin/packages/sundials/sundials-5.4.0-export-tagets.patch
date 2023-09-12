@@ -1,0 +1,1468 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 64af22cd8..1a91fa324 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1200,3 +1200,37 @@ install(
+   FILES ${PROJECT_SOURCE_DIR}/NOTICE
+   DESTINATION include/sundials
+   )
++
++# create package version file
++include(CMakePackageConfigHelpers)
++write_basic_package_version_file(
++  SUNDIALSConfigVersion.cmake
++  VERSION ${PACKAGE_VERSION}
++  COMPATIBILITY SameMajorVersion
++)
++
++# install targets
++install(
++  EXPORT sundials-targets
++  FILE SUNDIALSTargets.cmake
++  NAMESPACE SUNDIALS::
++  DESTINATION "${SUNDIALS_INSTALL_CMAKEDIR}"
++)
++
++# install SUNDIALSConfig.cmake
++configure_package_config_file(
++  "${PROJECT_SOURCE_DIR}/cmake/SUNDIALSConfig.cmake.in"
++  "${CMAKE_CURRENT_BINARY_DIR}/SUNDIALSConfig.cmake"
++  INSTALL_DESTINATION "${SUNDIALS_INSTALL_CMAKEDIR}"
++)
++install(FILES "${CMAKE_CURRENT_BINARY_DIR}/SUNDIALSConfig.cmake"
++              "${CMAKE_CURRENT_BINARY_DIR}/SUNDIALSConfigVersion.cmake"
++        DESTINATION "${SUNDIALS_INSTALL_CMAKEDIR}"
++)
++
++# Export targets so build directory can be used directly
++export(
++  EXPORT sundials-targets
++  FILE "${CMAKE_CURRENT_BINARY_DIR}/SUNDIALSTargets.cmake"
++  NAMESPACE SUNDIALS::
++)
+\ No newline at end of file
+diff --git a/src/arkode/CMakeLists.txt b/src/arkode/CMakeLists.txt
+index aceaef38b..ed4f46f4d 100644
+--- a/src/arkode/CMakeLists.txt
++++ b/src/arkode/CMakeLists.txt
+@@ -127,7 +127,7 @@ if(BUILD_STATIC_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_arkode CLEAN_DIRECT_OUTPUT 1)
+ 
+   # Install the ARKODE library
+-  install(TARGETS sundials_arkode_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_arkode_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+ endif(BUILD_STATIC_LIBS)
+ 
+@@ -151,7 +151,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES VERSION ${arkodelib_VERSION} SOVERSION ${arkodelib_SOVERSION})
+ 
+   # Install the ARKODE library
+-  install(TARGETS sundials_arkode_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_arkode_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+ endif(BUILD_SHARED_LIBS)
+ 
+diff --git a/src/arkode/fcmix/CMakeLists.txt b/src/arkode/fcmix/CMakeLists.txt
+index 774452ace..0c323ffb4 100644
+--- a/src/arkode/fcmix/CMakeLists.txt
++++ b/src/arkode/fcmix/CMakeLists.txt
+@@ -93,7 +93,7 @@ set_target_properties(sundials_farkode_static
+   PROPERTIES OUTPUT_NAME sundials_farkode CLEAN_DIRECT_OUTPUT 1)
+ 
+ # Install the FARKODE library
+-install(TARGETS sundials_farkode_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++install(TARGETS sundials_farkode_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets EXPORT sundials-targets)
+ 
+ #
+ message(STATUS "Added ARKODE FCMIX module")
+diff --git a/src/arkode/fmod/CMakeLists.txt b/src/arkode/fmod/CMakeLists.txt
+index db05b9270..1e6e323bb 100644
+--- a/src/arkode/fmod/CMakeLists.txt
++++ b/src/arkode/fmod/CMakeLists.txt
+@@ -55,7 +55,7 @@ if(BUILD_STATIC_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_farkode_mod CLEAN_DIRECT_OUTPUT 1)
+ 
+   # install the library
+-  install(TARGETS sundials_farkode_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_farkode_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+   # install the arkode mod file from here since it won't go into the
+   # top level fortran mod file directory
+@@ -97,7 +97,7 @@ if(BUILD_SHARED_LIBS)
+                         SOVERSION ${arkodelib_SOVERSION})
+ 
+   # install the library
+-  install(TARGETS sundials_farkode_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_farkode_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+   # install the arkode mod file from here since it won't go into the
+   # top level fortran mod file directory
+diff --git a/src/arkode/xbraid/CMakeLists.txt b/src/arkode/xbraid/CMakeLists.txt
+index dd9973319..3802c882f 100644
+--- a/src/arkode/xbraid/CMakeLists.txt
++++ b/src/arkode/xbraid/CMakeLists.txt
+@@ -55,7 +55,7 @@ if(BUILD_STATIC_LIBS)
+     PROPERTIES
+     OUTPUT_NAME sundials_arkode_xbraid
+     CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_arkode_xbraid_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_arkode_xbraid_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif()
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -69,7 +69,7 @@ if(BUILD_SHARED_LIBS)
+     CLEAN_DIRECT_OUTPUT 1
+     VERSION ${arkodelib_VERSION}
+     SOVERSION ${arkodelib_SOVERSION})
+-  install(TARGETS sundials_arkode_xbraid_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_arkode_xbraid_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif()
+ 
+ # Install the ARKODE header files
+diff --git a/src/cpodes/CMakeLists.txt b/src/cpodes/CMakeLists.txt
+index 6f34f64a4..25fa4bc4d 100644
+--- a/src/cpodes/CMakeLists.txt
++++ b/src/cpodes/CMakeLists.txt
+@@ -99,7 +99,7 @@ if(BUILD_STATIC_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_cpodes CLEAN_DIRECT_OUTPUT 1)
+ 
+   # Install the CPODES library
+-  install(TARGETS sundials_cpodes_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_cpodes_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+ endif(BUILD_STATIC_LIBS)
+ 
+@@ -119,7 +119,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES VERSION ${cpodeslib_VERSION} SOVERSION ${cpodeslib_SOVERSION})
+ 
+   # Install the CPODES library
+-  install(TARGETS sundials_cpodes_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_cpodes_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+ endif(BUILD_SHARED_LIBS)
+ 
+diff --git a/src/cvode/CMakeLists.txt b/src/cvode/CMakeLists.txt
+index 1e11e3759..6b06e06fd 100644
+--- a/src/cvode/CMakeLists.txt
++++ b/src/cvode/CMakeLists.txt
+@@ -136,10 +136,10 @@ if(BUILD_STATIC_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_cvode CLEAN_DIRECT_OUTPUT 1)
+ 
+   # Install the CVODE library
+-  install(TARGETS sundials_cvode_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_cvode_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   if(SUNDIALS_BUILD_PACKAGE_FUSED_KERNELS)
+-    install(TARGETS sundials_cvode_fused_cuda_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
+-    install(TARGETS sundials_cvode_fused_stubs_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_cvode_fused_cuda_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
++    install(TARGETS sundials_cvode_fused_stubs_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif()
+ 
+ endif(BUILD_STATIC_LIBS)
+@@ -181,10 +181,10 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES VERSION ${cvodelib_VERSION} SOVERSION ${cvodelib_SOVERSION})
+ 
+   # Install the CVODE library
+-  install(TARGETS sundials_cvode_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_cvode_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   if(SUNDIALS_BUILD_PACKAGE_FUSED_KERNELS)
+-    install(TARGETS sundials_cvode_fused_cuda_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
+-    install(TARGETS sundials_cvode_fused_stubs_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_cvode_fused_cuda_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
++    install(TARGETS sundials_cvode_fused_stubs_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif()
+ 
+ endif(BUILD_SHARED_LIBS)
+diff --git a/src/cvode/fcmix/CMakeLists.txt b/src/cvode/fcmix/CMakeLists.txt
+index 6cc99ed27..e3ac3a956 100644
+--- a/src/cvode/fcmix/CMakeLists.txt
++++ b/src/cvode/fcmix/CMakeLists.txt
+@@ -86,7 +86,7 @@ set_target_properties(sundials_fcvode_static
+   PROPERTIES OUTPUT_NAME sundials_fcvode CLEAN_DIRECT_OUTPUT 1)
+ 
+ # Install the FCVODE library
+-install(TARGETS sundials_fcvode_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++install(TARGETS sundials_fcvode_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+ #
+ message(STATUS "Added CVODE FCMIX module")
+diff --git a/src/cvode/fmod/CMakeLists.txt b/src/cvode/fmod/CMakeLists.txt
+index ea617e271..92f94fb89 100644
+--- a/src/cvode/fmod/CMakeLists.txt
++++ b/src/cvode/fmod/CMakeLists.txt
+@@ -47,7 +47,7 @@ if(BUILD_STATIC_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fcvode_mod CLEAN_DIRECT_OUTPUT 1)
+ 
+   # install the library
+-  install(TARGETS sundials_fcvode_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fcvode_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+   # install the cvode mod file from here since it won't go into the
+   # top level fortran mod file directory
+@@ -89,7 +89,7 @@ if(BUILD_SHARED_LIBS)
+                         SOVERSION ${cvodelib_SOVERSION})
+ 
+   # install the library
+-  install(TARGETS sundials_fcvode_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fcvode_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+   # install the cvode mod file from here since it won't go into the
+   # top level fortran mod file directory
+diff --git a/src/cvodes/CMakeLists.txt b/src/cvodes/CMakeLists.txt
+index 15db6e3c0..966c24f30 100644
+--- a/src/cvodes/CMakeLists.txt
++++ b/src/cvodes/CMakeLists.txt
+@@ -120,7 +120,7 @@ if(BUILD_STATIC_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_cvodes CLEAN_DIRECT_OUTPUT 1)
+ 
+   # Install the CVODES library
+-  install(TARGETS sundials_cvodes_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_cvodes_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+ endif(BUILD_STATIC_LIBS)
+ 
+@@ -145,7 +145,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES VERSION ${cvodeslib_VERSION} SOVERSION ${cvodeslib_SOVERSION})
+ 
+   # Install the CVODES library
+-  install(TARGETS sundials_cvodes_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_cvodes_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+ endif(BUILD_SHARED_LIBS)
+ 
+diff --git a/src/cvodes/fmod/CMakeLists.txt b/src/cvodes/fmod/CMakeLists.txt
+index 8eefbb293..26734a781 100644
+--- a/src/cvodes/fmod/CMakeLists.txt
++++ b/src/cvodes/fmod/CMakeLists.txt
+@@ -46,7 +46,7 @@ if(BUILD_STATIC_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fcvodes_mod CLEAN_DIRECT_OUTPUT 1)
+ 
+   # install the library
+-  install(TARGETS sundials_fcvodes_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fcvodes_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+   # install the cvodes mod file from here since it won't go into the
+   # top level fortran mod file directory
+@@ -88,7 +88,7 @@ if(BUILD_SHARED_LIBS)
+                         SOVERSION ${cvodeslib_SOVERSION})
+ 
+   # install the library
+-  install(TARGETS sundials_fcvodes_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fcvodes_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+   # install the cvodes mod file from here since it won't go into the
+   # top level fortran mod file directory
+diff --git a/src/ida/CMakeLists.txt b/src/ida/CMakeLists.txt
+index 58613edd7..0235aab6f 100644
+--- a/src/ida/CMakeLists.txt
++++ b/src/ida/CMakeLists.txt
+@@ -111,7 +111,7 @@ if(BUILD_STATIC_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_ida CLEAN_DIRECT_OUTPUT 1)
+ 
+   # Install the IDA library
+-  install(TARGETS sundials_ida_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_ida_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+ endif(BUILD_STATIC_LIBS)
+ 
+@@ -136,7 +136,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES VERSION ${idalib_VERSION} SOVERSION ${idalib_SOVERSION})
+ 
+   # Install the IDA library
+-  install(TARGETS sundials_ida_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_ida_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+ endif(BUILD_SHARED_LIBS)
+ 
+diff --git a/src/ida/fcmix/CMakeLists.txt b/src/ida/fcmix/CMakeLists.txt
+index 5e1360ab9..ec4d50456 100644
+--- a/src/ida/fcmix/CMakeLists.txt
++++ b/src/ida/fcmix/CMakeLists.txt
+@@ -83,6 +83,6 @@ set_target_properties(sundials_fida_static
+   PROPERTIES OUTPUT_NAME sundials_fida CLEAN_DIRECT_OUTPUT 1)
+ 
+ # Install the FIDA library
+-install(TARGETS sundials_fida_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++install(TARGETS sundials_fida_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ #
+ message(STATUS "Added IDA FCMIX module")
+diff --git a/src/ida/fmod/CMakeLists.txt b/src/ida/fmod/CMakeLists.txt
+index 61f448186..2f2504870 100644
+--- a/src/ida/fmod/CMakeLists.txt
++++ b/src/ida/fmod/CMakeLists.txt
+@@ -47,7 +47,7 @@ if(BUILD_STATIC_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fida_mod CLEAN_DIRECT_OUTPUT 1)
+ 
+   # install the library
+-  install(TARGETS sundials_fida_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fida_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+   # install the ida mod file from here since it won't go into the
+   # top level fortran mod file directory
+@@ -89,7 +89,7 @@ if(BUILD_SHARED_LIBS)
+                         SOVERSION ${idalib_SOVERSION})
+ 
+   # install the library
+-  install(TARGETS sundials_fida_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fida_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+   # install the ida mod file from here since it won't go into the
+   # top level fortran mod file directory
+diff --git a/src/idas/CMakeLists.txt b/src/idas/CMakeLists.txt
+index bdec77208..d5fd092d4 100644
+--- a/src/idas/CMakeLists.txt
++++ b/src/idas/CMakeLists.txt
+@@ -115,7 +115,7 @@ if(BUILD_STATIC_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_idas CLEAN_DIRECT_OUTPUT 1)
+ 
+   # Install the IDA library
+-  install(TARGETS sundials_idas_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_idas_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+ endif(BUILD_STATIC_LIBS)
+ 
+@@ -140,7 +140,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES VERSION ${idaslib_VERSION} SOVERSION ${idaslib_SOVERSION})
+ 
+   # Install the IDAS library
+-  install(TARGETS sundials_idas_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_idas_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+ endif(BUILD_SHARED_LIBS)
+ 
+diff --git a/src/idas/fmod/CMakeLists.txt b/src/idas/fmod/CMakeLists.txt
+index 48a80516d..560b6d377 100644
+--- a/src/idas/fmod/CMakeLists.txt
++++ b/src/idas/fmod/CMakeLists.txt
+@@ -46,7 +46,7 @@ if(BUILD_STATIC_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fidas_mod CLEAN_DIRECT_OUTPUT 1)
+ 
+   # install the library
+-  install(TARGETS sundials_fidas_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fidas_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+   # install the idas mod file from here since it won't go into the
+   # top level fortran mod file directory
+@@ -88,7 +88,7 @@ if(BUILD_SHARED_LIBS)
+                         SOVERSION ${idaslib_SOVERSION})
+ 
+   # install the library
+-  install(TARGETS sundials_fidas_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fidas_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+   # install the idas mod file from here since it won't go into the
+   # top level fortran mod file directory
+diff --git a/src/kinsol/CMakeLists.txt b/src/kinsol/CMakeLists.txt
+index 8a278659b..00837d50d 100644
+--- a/src/kinsol/CMakeLists.txt
++++ b/src/kinsol/CMakeLists.txt
+@@ -101,7 +101,7 @@ if(BUILD_STATIC_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_kinsol CLEAN_DIRECT_OUTPUT 1)
+ 
+   # Install the KINSOL library
+-  install(TARGETS sundials_kinsol_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_kinsol_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+ endif(BUILD_STATIC_LIBS)
+ 
+@@ -125,7 +125,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES VERSION ${kinsollib_VERSION} SOVERSION ${kinsollib_SOVERSION})
+ 
+   # Install the KINSOL library
+-  install(TARGETS sundials_kinsol_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_kinsol_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+ endif(BUILD_SHARED_LIBS)
+ 
+diff --git a/src/kinsol/fcmix/CMakeLists.txt b/src/kinsol/fcmix/CMakeLists.txt
+index a617a0241..4ea4fd0bd 100644
+--- a/src/kinsol/fcmix/CMakeLists.txt
++++ b/src/kinsol/fcmix/CMakeLists.txt
+@@ -74,7 +74,7 @@ set_target_properties(sundials_fkinsol_static
+   PROPERTIES OUTPUT_NAME sundials_fkinsol CLEAN_DIRECT_OUTPUT 1)
+ 
+ # Install the FKINSOL library
+-install(TARGETS sundials_fkinsol_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++install(TARGETS sundials_fkinsol_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+ #
+ message(STATUS "Added KINSOL FCMIX module")
+diff --git a/src/kinsol/fmod/CMakeLists.txt b/src/kinsol/fmod/CMakeLists.txt
+index bd2ee1338..b1fcb4e1d 100644
+--- a/src/kinsol/fmod/CMakeLists.txt
++++ b/src/kinsol/fmod/CMakeLists.txt
+@@ -45,7 +45,7 @@ if(BUILD_STATIC_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fkinsol_mod CLEAN_DIRECT_OUTPUT 1)
+ 
+   # install the library
+-  install(TARGETS sundials_fkinsol_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fkinsol_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+   # install the kinsol mod file from here since it won't go into the
+   # top level fortran mod file directory
+@@ -85,7 +85,7 @@ if(BUILD_SHARED_LIBS)
+                         SOVERSION ${kinsollib_SOVERSION})
+ 
+   # install the library
+-  install(TARGETS sundials_fkinsol_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fkinsol_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+   # install the kinsol mod file from here since it won't go into the
+   # top level fortran mod file directory
+diff --git a/src/nvector/cuda/CMakeLists.txt b/src/nvector/cuda/CMakeLists.txt
+index 98e8cbe7e..b76943aa5 100644
+--- a/src/nvector/cuda/CMakeLists.txt
++++ b/src/nvector/cuda/CMakeLists.txt
+@@ -48,7 +48,7 @@ if(BUILD_STATIC_LIBS)
+   set_target_properties(sundials_nveccuda_static PROPERTIES
+                         OUTPUT_NAME sundials_nveccuda
+                         CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_nveccuda_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nveccuda_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ # Rules for building and installing the shared library:
+@@ -65,7 +65,7 @@ if(BUILD_SHARED_LIBS)
+                         CLEAN_DIRECT_OUTPUT 1
+                         VERSION ${nveclib_VERSION}
+                         SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_nveccuda_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nveccuda_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ # Install the CUDA NVector header files
+diff --git a/src/nvector/manyvector/CMakeLists.txt b/src/nvector/manyvector/CMakeLists.txt
+index de1eb6fd1..61a32d7ab 100644
+--- a/src/nvector/manyvector/CMakeLists.txt
++++ b/src/nvector/manyvector/CMakeLists.txt
+@@ -67,7 +67,7 @@ if(BUILD_STATIC_LIBS)
+                         OUTPUT_NAME sundials_nvecmanyvector
+                         CLEAN_DIRECT_OUTPUT 1)
+ 
+-  install(TARGETS sundials_nvecmanyvector_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvecmanyvector_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+   # ----------------------- With MPI
+   if(MPI_ENABLE AND MPI_C_FOUND)
+@@ -79,7 +79,7 @@ if(BUILD_STATIC_LIBS)
+                           OUTPUT_NAME sundials_nvecmpimanyvector
+                           CLEAN_DIRECT_OUTPUT 1)
+ 
+-    install(TARGETS sundials_nvecmpimanyvector_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_nvecmpimanyvector_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif()
+ 
+ endif(BUILD_STATIC_LIBS)
+@@ -106,7 +106,7 @@ if(BUILD_SHARED_LIBS)
+                         SOVERSION ${nveclib_SOVERSION}
+                         CLEAN_DIRECT_OUTPUT 1)
+ 
+-  install(TARGETS sundials_nvecmanyvector_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvecmanyvector_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+   # ----------------------- With MPI
+   if(MPI_ENABLE AND MPI_C_FOUND)
+@@ -124,7 +124,7 @@ if(BUILD_SHARED_LIBS)
+                           SOVERSION ${nveclib_SOVERSION}
+                           CLEAN_DIRECT_OUTPUT 1)
+ 
+-    install(TARGETS sundials_nvecmpimanyvector_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_nvecmpimanyvector_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif()
+ 
+ endif(BUILD_SHARED_LIBS)
+diff --git a/src/nvector/manyvector/fmod/CMakeLists.txt b/src/nvector/manyvector/fmod/CMakeLists.txt
+index 369b3bdea..6cb2348e0 100644
+--- a/src/nvector/manyvector/fmod/CMakeLists.txt
++++ b/src/nvector/manyvector/fmod/CMakeLists.txt
+@@ -39,7 +39,7 @@ if(BUILD_STATIC_LIBS)
+   set_target_properties(sundials_fnvecmanyvector_mod_static PROPERTIES
+                         OUTPUT_NAME sundials_fnvecmanyvector_mod
+                         CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_fnvecmanyvector_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fnvecmanyvector_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+   # ----------------------- With MPI
+   if(MPI_ENABLE AND MPI_C_FOUND)
+@@ -49,7 +49,7 @@ if(BUILD_STATIC_LIBS)
+     set_target_properties(sundials_fnvecmpimanyvector_mod_static PROPERTIES
+                           OUTPUT_NAME sundials_fnvecmpimanyvector_mod
+                           CLEAN_DIRECT_OUTPUT 1)
+-    install(TARGETS sundials_fnvecmpimanyvector_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fnvecmpimanyvector_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif()
+ endif(BUILD_STATIC_LIBS)
+ 
+@@ -63,7 +63,7 @@ if(BUILD_SHARED_LIBS)
+                         CLEAN_DIRECT_OUTPUT 1
+                         VERSION ${nveclib_VERSION}
+                         SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_fnvecmanyvector_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fnvecmanyvector_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+   # ----------------------- With MPI
+   if(MPI_ENABLE AND MPI_C_FOUND)
+@@ -73,7 +73,7 @@ if(BUILD_SHARED_LIBS)
+     set_target_properties(sundials_fnvecmpimanyvector_mod_shared PROPERTIES
+                           OUTPUT_NAME sundials_fnvecmpimanyvector_mod
+                           CLEAN_DIRECT_OUTPUT 1)
+-    install(TARGETS sundials_fnvecmpimanyvector_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fnvecmpimanyvector_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif()
+ endif(BUILD_SHARED_LIBS)
+ 
+diff --git a/src/nvector/mpiplusx/CMakeLists.txt b/src/nvector/mpiplusx/CMakeLists.txt
+index 4562e6216..ea09cbb12 100644
+--- a/src/nvector/mpiplusx/CMakeLists.txt
++++ b/src/nvector/mpiplusx/CMakeLists.txt
+@@ -67,7 +67,7 @@ if(BUILD_STATIC_LIBS)
+                         OUTPUT_NAME sundials_nvecmpiplusx
+                         CLEAN_DIRECT_OUTPUT 1)
+ 
+-  install(TARGETS sundials_nvecmpiplusx_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvecmpiplusx_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ # Rules for building and installing the shared library:
+@@ -88,7 +88,7 @@ if(BUILD_SHARED_LIBS)
+                         SOVERSION ${nveclib_SOVERSION}
+                         CLEAN_DIRECT_OUTPUT 1)
+ 
+-  install(TARGETS sundials_nvecmpiplusx_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvecmpiplusx_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ # Install the NVECMPIPLUSX header files
+diff --git a/src/nvector/mpiplusx/fmod/CMakeLists.txt b/src/nvector/mpiplusx/fmod/CMakeLists.txt
+index f0f30125e..ca149ba40 100644
+--- a/src/nvector/mpiplusx/fmod/CMakeLists.txt
++++ b/src/nvector/mpiplusx/fmod/CMakeLists.txt
+@@ -38,7 +38,7 @@ if(BUILD_STATIC_LIBS)
+     set_target_properties(sundials_fnvecmpiplusx_mod_static PROPERTIES
+                           OUTPUT_NAME sundials_fnvecmpiplusx_mod
+                           CLEAN_DIRECT_OUTPUT 1)
+-    install(TARGETS sundials_fnvecmpiplusx_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fnvecmpiplusx_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif()
+ endif(BUILD_STATIC_LIBS)
+ 
+@@ -50,7 +50,7 @@ if(BUILD_SHARED_LIBS)
+     set_target_properties(sundials_fnvecmpiplusx_mod_shared PROPERTIES
+                           OUTPUT_NAME sundials_fnvecmpiplusx_mod
+                           CLEAN_DIRECT_OUTPUT 1)
+-    install(TARGETS sundials_fnvecmpiplusx_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fnvecmpiplusx_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif()
+ endif(BUILD_SHARED_LIBS)
+ 
+diff --git a/src/nvector/openmp/CMakeLists.txt b/src/nvector/openmp/CMakeLists.txt
+index 81ebd2721..f19f54bee 100644
+--- a/src/nvector/openmp/CMakeLists.txt
++++ b/src/nvector/openmp/CMakeLists.txt
+@@ -56,7 +56,7 @@ if(BUILD_STATIC_LIBS)
+   add_library(sundials_nvecopenmp_static STATIC ${nvecopenmp_SOURCES} ${shared_SOURCES})
+   set_target_properties(sundials_nvecopenmp_static
+     PROPERTIES OUTPUT_NAME sundials_nvecopenmp CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_nvecopenmp_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvecopenmp_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ # Rules for building and installing the shared library:
+@@ -75,7 +75,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_nvecopenmp CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_nvecopenmp_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_nvecopenmp_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvecopenmp_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ # Install the NVECOPENMP header files
+@@ -89,7 +89,7 @@ if(F77_INTERFACE_ENABLE AND F77_FOUND)
+     add_library(sundials_fnvecopenmp_static STATIC ${fnvecopenmp_SOURCES})
+     set_target_properties(sundials_fnvecopenmp_static
+       PROPERTIES OUTPUT_NAME sundials_fnvecopenmp CLEAN_DIRECT_OUTPUT 1)
+-    install(TARGETS sundials_fnvecopenmp_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fnvecopenmp_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif(BUILD_STATIC_LIBS)
+ 
+   if(BUILD_SHARED_LIBS)
+@@ -102,7 +102,7 @@ if(F77_INTERFACE_ENABLE AND F77_FOUND)
+       PROPERTIES OUTPUT_NAME sundials_fnvecopenmp CLEAN_DIRECT_OUTPUT 1)
+     set_target_properties(sundials_fnvecopenmp_shared
+       PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-    install(TARGETS sundials_fnvecopenmp_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fnvecopenmp_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif(BUILD_SHARED_LIBS)
+ 
+ endif(F77_INTERFACE_ENABLE AND F77_FOUND)
+diff --git a/src/nvector/openmp/fmod/CMakeLists.txt b/src/nvector/openmp/fmod/CMakeLists.txt
+index 25dddc902..6c0fd615b 100644
+--- a/src/nvector/openmp/fmod/CMakeLists.txt
++++ b/src/nvector/openmp/fmod/CMakeLists.txt
+@@ -23,7 +23,7 @@ if(BUILD_STATIC_LIBS)
+   add_dependencies(sundials_fnvecopenmp_mod_static_obj sundials_fgeneric_static_obj)
+   set_target_properties(sundials_fnvecopenmp_mod_static
+     PROPERTIES OUTPUT_NAME sundials_fnvecopenmp_mod CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_fnvecopenmp_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fnvecopenmp_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -35,7 +35,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fnvecopenmp_mod CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_fnvecopenmp_mod_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_fnvecopenmp_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fnvecopenmp_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ message(STATUS "Added NVECTOR_OPENMP F2003 interface")
+diff --git a/src/nvector/openmpdev/CMakeLists.txt b/src/nvector/openmpdev/CMakeLists.txt
+index 5a4afa74f..4537c4c46 100644
+--- a/src/nvector/openmpdev/CMakeLists.txt
++++ b/src/nvector/openmpdev/CMakeLists.txt
+@@ -50,7 +50,7 @@ if(BUILD_STATIC_LIBS)
+   add_library(sundials_nvecopenmpdev_static STATIC ${nvecopenmpdev_SOURCES} ${shared_SOURCES})
+   set_target_properties(sundials_nvecopenmpdev_static
+     PROPERTIES OUTPUT_NAME sundials_nvecopenmpdev CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_nvecopenmpdev_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvecopenmpdev_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif()
+ 
+ # Rules for building and installing the shared library:
+@@ -69,7 +69,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_nvecopenmpdev CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_nvecopenmpdev_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_nvecopenmpdev_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvecopenmpdev_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ 
+ endif()
+ 
+diff --git a/src/nvector/parallel/CMakeLists.txt b/src/nvector/parallel/CMakeLists.txt
+index f0b385dee..a6dce7467 100644
+--- a/src/nvector/parallel/CMakeLists.txt
++++ b/src/nvector/parallel/CMakeLists.txt
+@@ -58,7 +58,7 @@ if(BUILD_STATIC_LIBS)
+   add_library(sundials_nvecparallel_static STATIC ${nvecparallel_SOURCES} ${shared_SOURCES})
+   set_target_properties(sundials_nvecparallel_static
+     PROPERTIES OUTPUT_NAME sundials_nvecparallel CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_nvecparallel_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvecparallel_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ # Rules for building and installing the shared library:
+@@ -77,7 +77,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_nvecparallel CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_nvecparallel_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_nvecparallel_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvecparallel_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ # Install the NVECPARALLEL header files
+@@ -91,7 +91,7 @@ if(F77_INTERFACE_ENABLE AND MPI_Fortran_FOUND)
+     add_library(sundials_fnvecparallel_static STATIC ${fnvecparallel_SOURCES})
+     set_target_properties(sundials_fnvecparallel_static
+       PROPERTIES OUTPUT_NAME sundials_fnvecparallel CLEAN_DIRECT_OUTPUT 1)
+-    install(TARGETS sundials_fnvecparallel_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fnvecparallel_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif(BUILD_STATIC_LIBS)
+ 
+   if(BUILD_SHARED_LIBS)
+@@ -104,7 +104,7 @@ if(F77_INTERFACE_ENABLE AND MPI_Fortran_FOUND)
+       PROPERTIES OUTPUT_NAME sundials_fnvecparallel CLEAN_DIRECT_OUTPUT 1)
+     set_target_properties(sundials_fnvecparallel_shared
+       PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-    install(TARGETS sundials_fnvecparallel_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fnvecparallel_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif(BUILD_SHARED_LIBS)
+ 
+ endif()
+diff --git a/src/nvector/parallel/fmod/CMakeLists.txt b/src/nvector/parallel/fmod/CMakeLists.txt
+index bb8595047..2d5bae47e 100644
+--- a/src/nvector/parallel/fmod/CMakeLists.txt
++++ b/src/nvector/parallel/fmod/CMakeLists.txt
+@@ -39,7 +39,7 @@ if(BUILD_STATIC_LIBS)
+   set_target_properties(sundials_fnvecparallel_mod_static PROPERTIES
+                         OUTPUT_NAME sundials_fnvecparallel_mod
+                         CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_fnvecparallel_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fnvecparallel_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -51,7 +51,7 @@ if(BUILD_SHARED_LIBS)
+                         CLEAN_DIRECT_OUTPUT 1
+                         VERSION ${nveclib_VERSION}
+                         SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_fnvecparallel_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fnvecparallel_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ message(STATUS "Added NVECTOR_PARALLEL F2003 interface")
+diff --git a/src/nvector/parhyp/CMakeLists.txt b/src/nvector/parhyp/CMakeLists.txt
+index 824c14103..f0afc3b71 100644
+--- a/src/nvector/parhyp/CMakeLists.txt
++++ b/src/nvector/parhyp/CMakeLists.txt
+@@ -54,7 +54,7 @@ if(BUILD_STATIC_LIBS)
+   add_library(sundials_nvecparhyp_static STATIC ${nvecparhyp_SOURCES} ${shared_SOURCES})
+   set_target_properties(sundials_nvecparhyp_static
+     PROPERTIES OUTPUT_NAME sundials_nvecparhyp CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_nvecparhyp_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvecparhyp_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ # Rules for building and installing the shared library:
+@@ -76,7 +76,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_nvecparhyp CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_nvecparhyp_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_nvecparhyp_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvecparhyp_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ # Install the NVECPARHYP header files
+diff --git a/src/nvector/petsc/CMakeLists.txt b/src/nvector/petsc/CMakeLists.txt
+index 0e285b636..3abcd2053 100644
+--- a/src/nvector/petsc/CMakeLists.txt
++++ b/src/nvector/petsc/CMakeLists.txt
+@@ -52,7 +52,7 @@ if(BUILD_STATIC_LIBS)
+                         OUTPUT_NAME sundials_nvecpetsc
+                         CLEAN_DIRECT_OUTPUT 1)
+ 
+-  install(TARGETS sundials_nvecpetsc_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvecpetsc_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ #
+@@ -71,7 +71,7 @@ if(BUILD_SHARED_LIBS)
+                         VERSION ${nveclib_VERSION}
+                         SOVERSION ${nveclib_SOVERSION})
+ 
+-  install(TARGETS sundials_nvecpetsc_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvecpetsc_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ # Install the NVECPARHYP header files
+diff --git a/src/nvector/pthreads/CMakeLists.txt b/src/nvector/pthreads/CMakeLists.txt
+index 0230f30f7..2275e7220 100644
+--- a/src/nvector/pthreads/CMakeLists.txt
++++ b/src/nvector/pthreads/CMakeLists.txt
+@@ -56,7 +56,7 @@ if(BUILD_STATIC_LIBS)
+ 
+   set_target_properties(sundials_nvecpthreads_static
+     PROPERTIES OUTPUT_NAME sundials_nvecpthreads CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_nvecpthreads_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvecpthreads_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ # Rules for building and installing the shared library:
+@@ -76,7 +76,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_nvecpthreads CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_nvecpthreads_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_nvecpthreads_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvecpthreads_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ # Install the NVECPTHREADS header files
+@@ -90,7 +90,7 @@ if(F77_INTERFACE_ENABLE AND F77_FOUND)
+     add_library(sundials_fnvecpthreads_static STATIC ${fnvecpthreads_SOURCES})
+     set_target_properties(sundials_fnvecpthreads_static
+       PROPERTIES OUTPUT_NAME sundials_fnvecpthreads CLEAN_DIRECT_OUTPUT 1)
+-    install(TARGETS sundials_fnvecpthreads_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fnvecpthreads_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif(BUILD_STATIC_LIBS)
+ 
+   if(BUILD_SHARED_LIBS)
+@@ -103,7 +103,7 @@ if(F77_INTERFACE_ENABLE AND F77_FOUND)
+       PROPERTIES OUTPUT_NAME sundials_fnvecpthreads CLEAN_DIRECT_OUTPUT 1)
+     set_target_properties(sundials_fnvecpthreads_shared
+       PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-    install(TARGETS sundials_fnvecpthreads_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fnvecpthreads_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif(BUILD_SHARED_LIBS)
+ endif(F77_INTERFACE_ENABLE AND F77_FOUND)
+ 
+diff --git a/src/nvector/pthreads/fmod/CMakeLists.txt b/src/nvector/pthreads/fmod/CMakeLists.txt
+index f1a2b926c..b278aef07 100644
+--- a/src/nvector/pthreads/fmod/CMakeLists.txt
++++ b/src/nvector/pthreads/fmod/CMakeLists.txt
+@@ -23,7 +23,7 @@ if(BUILD_STATIC_LIBS)
+   add_dependencies(sundials_fnvecpthreads_mod_static_obj sundials_fgeneric_static_obj)
+   set_target_properties(sundials_fnvecpthreads_mod_static
+     PROPERTIES OUTPUT_NAME sundials_fnvecpthreads_mod CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_fnvecpthreads_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fnvecpthreads_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -35,7 +35,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fnvecpthreads_mod CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_fnvecpthreads_mod_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_fnvecpthreads_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fnvecpthreads_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ message(STATUS "Added NVECTOR_PTHREADS F2003 interface")
+diff --git a/src/nvector/raja/CMakeLists.txt b/src/nvector/raja/CMakeLists.txt
+index d1e7347ef..368e93320 100644
+--- a/src/nvector/raja/CMakeLists.txt
++++ b/src/nvector/raja/CMakeLists.txt
+@@ -53,7 +53,7 @@ if(BUILD_STATIC_LIBS)
+   set_target_properties(sundials_nveccudaraja_static PROPERTIES
+                         OUTPUT_NAME sundials_nveccudaraja
+                         CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_nveccudaraja_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nveccudaraja_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ # Rules for building and installing the shared library:
+@@ -73,7 +73,7 @@ if(BUILD_SHARED_LIBS)
+                         CLEAN_DIRECT_OUTPUT 1
+                         VERSION ${nveclib_VERSION}
+                         SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_nveccudaraja_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nveccudaraja_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ # Install the NVECRAJA header files
+diff --git a/src/nvector/serial/CMakeLists.txt b/src/nvector/serial/CMakeLists.txt
+index 0cfd7e11c..76a022642 100644
+--- a/src/nvector/serial/CMakeLists.txt
++++ b/src/nvector/serial/CMakeLists.txt
+@@ -50,7 +50,7 @@ if(BUILD_STATIC_LIBS)
+   add_library(sundials_nvecserial_static STATIC ${nvecserial_SOURCES} ${shared_SOURCES})
+   set_target_properties(sundials_nvecserial_static
+     PROPERTIES OUTPUT_NAME sundials_nvecserial CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_nvecserial_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvecserial_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ # Rules for building and installing the shared library:
+@@ -69,7 +69,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_nvecserial CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_nvecserial_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_nvecserial_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvecserial_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ # Install the NVECSERIAL header files
+@@ -83,7 +83,7 @@ if(F77_INTERFACE_ENABLE AND F77_FOUND)
+     add_library(sundials_fnvecserial_static STATIC ${fnvecserial_SOURCES})
+     set_target_properties(sundials_fnvecserial_static
+       PROPERTIES OUTPUT_NAME sundials_fnvecserial CLEAN_DIRECT_OUTPUT 1)
+-    install(TARGETS sundials_fnvecserial_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fnvecserial_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif(BUILD_STATIC_LIBS)
+ 
+   if(BUILD_SHARED_LIBS)
+@@ -96,7 +96,7 @@ if(F77_INTERFACE_ENABLE AND F77_FOUND)
+       PROPERTIES OUTPUT_NAME sundials_fnvecserial CLEAN_DIRECT_OUTPUT 1)
+     set_target_properties(sundials_fnvecserial_shared
+       PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-    install(TARGETS sundials_fnvecserial_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fnvecserial_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif(BUILD_SHARED_LIBS)
+ 
+ endif(F77_INTERFACE_ENABLE AND F77_FOUND)
+diff --git a/src/nvector/serial/fmod/CMakeLists.txt b/src/nvector/serial/fmod/CMakeLists.txt
+index ffed884ad..7e04f6a9d 100644
+--- a/src/nvector/serial/fmod/CMakeLists.txt
++++ b/src/nvector/serial/fmod/CMakeLists.txt
+@@ -23,7 +23,7 @@ if(BUILD_STATIC_LIBS)
+   set_target_properties(sundials_fnvecserial_mod_static PROPERTIES
+                         OUTPUT_NAME sundials_fnvecserial_mod
+                         CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_fnvecserial_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fnvecserial_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -35,7 +35,7 @@ if(BUILD_SHARED_LIBS)
+                         CLEAN_DIRECT_OUTPUT 1
+                         VERSION ${nveclib_VERSION}
+                         SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_fnvecserial_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fnvecserial_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ message(STATUS "Added NVECTOR_SERIAL F2003 interface")
+diff --git a/src/nvector/trilinos/CMakeLists.txt b/src/nvector/trilinos/CMakeLists.txt
+index 7dce804bd..f2ab5c983 100644
+--- a/src/nvector/trilinos/CMakeLists.txt
++++ b/src/nvector/trilinos/CMakeLists.txt
+@@ -58,7 +58,7 @@ if(BUILD_STATIC_LIBS)
+                         OUTPUT_NAME sundials_nvectrilinos
+                         CLEAN_DIRECT_OUTPUT 1)
+ 
+-  install(TARGETS sundials_nvectrilinos_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvectrilinos_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ # Rules for building and installing the shared library:
+@@ -81,7 +81,7 @@ if(BUILD_SHARED_LIBS)
+                         VERSION ${nveclib_VERSION}
+                         SOVERSION ${nveclib_SOVERSION})
+ 
+-  install(TARGETS sundials_nvectrilinos_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_nvectrilinos_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ # Install the NVECTRILINOS header files
+diff --git a/src/sunlinsol/band/fmod/CMakeLists.txt b/src/sunlinsol/band/fmod/CMakeLists.txt
+index 11516d8b4..8759f6a62 100644
+--- a/src/sunlinsol/band/fmod/CMakeLists.txt
++++ b/src/sunlinsol/band/fmod/CMakeLists.txt
+@@ -24,7 +24,7 @@ if(BUILD_STATIC_LIBS)
+   target_link_libraries(sundials_fsunlinsolband_mod_static PUBLIC sundials_fsunmatrixband_mod_static)
+   set_target_properties(sundials_fsunlinsolband_mod_static
+     PROPERTIES OUTPUT_NAME sundials_fsunlinsolband_mod CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_fsunlinsolband_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunlinsolband_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -37,7 +37,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fsunlinsolband_mod CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_fsunlinsolband_mod_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_fsunlinsolband_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunlinsolband_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ message(STATUS "Added SUNLINSOL_BAND F2003 interface")
+diff --git a/src/sunlinsol/cusolversp/CMakeLists.txt b/src/sunlinsol/cusolversp/CMakeLists.txt
+index c6f2857ff..e2c48dfc1 100644
+--- a/src/sunlinsol/cusolversp/CMakeLists.txt
++++ b/src/sunlinsol/cusolversp/CMakeLists.txt
+@@ -46,7 +46,7 @@ if(BUILD_STATIC_LIBS)
+   set_target_properties(sundials_sunlinsolcusolversp_static PROPERTIES
+                         OUTPUT_NAME sundials_sunlinsolcusolversp
+                         CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_sunlinsolcusolversp_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_sunlinsolcusolversp_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -65,7 +65,7 @@ if(BUILD_SHARED_LIBS)
+                         CLEAN_DIRECT_OUTPUT 1
+                         VERSION ${sunlinsollib_VERSION}
+                         SOVERSION ${sunlinsollib_SOVERSION})
+-  install(TARGETS sundials_sunlinsolcusolversp_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_sunlinsolcusolversp_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ # Install the CUDA NVector header files
+diff --git a/src/sunlinsol/dense/fmod/CMakeLists.txt b/src/sunlinsol/dense/fmod/CMakeLists.txt
+index a7e86355e..b4606475f 100644
+--- a/src/sunlinsol/dense/fmod/CMakeLists.txt
++++ b/src/sunlinsol/dense/fmod/CMakeLists.txt
+@@ -24,7 +24,7 @@ if(BUILD_STATIC_LIBS)
+   target_link_libraries(sundials_fsunlinsoldense_mod_static PUBLIC sundials_fsunmatrixdense_mod_static)
+   set_target_properties(sundials_fsunlinsoldense_mod_static
+     PROPERTIES OUTPUT_NAME sundials_fsunlinsoldense_mod CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_fsunlinsoldense_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunlinsoldense_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -37,7 +37,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fsunlinsoldense_mod CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_fsunlinsoldense_mod_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_fsunlinsoldense_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunlinsoldense_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ message(STATUS "Added SUNLINSOL_DENSE F2003 interface")
+diff --git a/src/sunlinsol/klu/fmod/CMakeLists.txt b/src/sunlinsol/klu/fmod/CMakeLists.txt
+index e82a64c4b..38b19a0ce 100644
+--- a/src/sunlinsol/klu/fmod/CMakeLists.txt
++++ b/src/sunlinsol/klu/fmod/CMakeLists.txt
+@@ -24,7 +24,7 @@ if(BUILD_STATIC_LIBS)
+   target_link_libraries(sundials_fsunlinsolklu_mod_static PUBLIC sundials_fsunmatrixsparse_mod_static)
+   set_target_properties(sundials_fsunlinsolklu_mod_static
+     PROPERTIES OUTPUT_NAME sundials_fsunlinsolklu_mod CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_fsunlinsolklu_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunlinsolklu_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -37,7 +37,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fsunlinsolklu_mod CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_fsunlinsolklu_mod_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_fsunlinsolklu_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunlinsolklu_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ message(STATUS "Added SUNLINSOL_KLU F2003 interface")
+diff --git a/src/sunlinsol/pcg/fmod/CMakeLists.txt b/src/sunlinsol/pcg/fmod/CMakeLists.txt
+index 1feb56c7f..d0d53f0bf 100644
+--- a/src/sunlinsol/pcg/fmod/CMakeLists.txt
++++ b/src/sunlinsol/pcg/fmod/CMakeLists.txt
+@@ -23,7 +23,7 @@ if(BUILD_STATIC_LIBS)
+   add_dependencies(sundials_fsunlinsolpcg_mod_static_obj sundials_fgeneric_static_obj)
+   set_target_properties(sundials_fsunlinsolpcg_mod_static
+     PROPERTIES OUTPUT_NAME sundials_fsunlinsolpcg_mod CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_fsunlinsolpcg_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunlinsolpcg_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -35,7 +35,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fsunlinsolpcg_mod CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_fsunlinsolpcg_mod_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_fsunlinsolpcg_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunlinsolpcg_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ message(STATUS "Added SUNLINSOL_PCG F2003 interface")
+diff --git a/src/sunlinsol/spbcgs/fmod/CMakeLists.txt b/src/sunlinsol/spbcgs/fmod/CMakeLists.txt
+index dcf096039..e1a635ebb 100644
+--- a/src/sunlinsol/spbcgs/fmod/CMakeLists.txt
++++ b/src/sunlinsol/spbcgs/fmod/CMakeLists.txt
+@@ -23,7 +23,7 @@ if(BUILD_STATIC_LIBS)
+   add_dependencies(sundials_fsunlinsolspbcgs_mod_static_obj sundials_fgeneric_static_obj)
+   set_target_properties(sundials_fsunlinsolspbcgs_mod_static
+     PROPERTIES OUTPUT_NAME sundials_fsunlinsolspbcgs_mod CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_fsunlinsolspbcgs_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunlinsolspbcgs_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -35,7 +35,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fsunlinsolspbcgs_mod CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_fsunlinsolspbcgs_mod_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_fsunlinsolspbcgs_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunlinsolspbcgs_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ message(STATUS "Added SUNLINSOL_SPBCGS F2003 interface")
+diff --git a/src/sunlinsol/spfgmr/fmod/CMakeLists.txt b/src/sunlinsol/spfgmr/fmod/CMakeLists.txt
+index ad00458d5..47acc4d19 100644
+--- a/src/sunlinsol/spfgmr/fmod/CMakeLists.txt
++++ b/src/sunlinsol/spfgmr/fmod/CMakeLists.txt
+@@ -23,7 +23,7 @@ if(BUILD_STATIC_LIBS)
+   add_dependencies(sundials_fsunlinsolspfgmr_mod_static_obj sundials_fgeneric_static_obj)
+   set_target_properties(sundials_fsunlinsolspfgmr_mod_static
+     PROPERTIES OUTPUT_NAME sundials_fsunlinsolspfgmr_mod CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_fsunlinsolspfgmr_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunlinsolspfgmr_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -35,7 +35,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fsunlinsolspfgmr_mod CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_fsunlinsolspfgmr_mod_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_fsunlinsolspfgmr_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunlinsolspfgmr_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ message(STATUS "Added SUNLINSOL_SPFGMR F2003 interface")
+diff --git a/src/sunlinsol/spgmr/fmod/CMakeLists.txt b/src/sunlinsol/spgmr/fmod/CMakeLists.txt
+index b9dcf1cd1..af6749dbc 100644
+--- a/src/sunlinsol/spgmr/fmod/CMakeLists.txt
++++ b/src/sunlinsol/spgmr/fmod/CMakeLists.txt
+@@ -23,7 +23,7 @@ if(BUILD_STATIC_LIBS)
+   add_dependencies(sundials_fsunlinsolspgmr_mod_static_obj sundials_fgeneric_static_obj)
+   set_target_properties(sundials_fsunlinsolspgmr_mod_static
+     PROPERTIES OUTPUT_NAME sundials_fsunlinsolspgmr_mod CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_fsunlinsolspgmr_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunlinsolspgmr_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -35,7 +35,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fsunlinsolspgmr_mod CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_fsunlinsolspgmr_mod_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_fsunlinsolspgmr_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunlinsolspgmr_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ message(STATUS "Added SUNLINSOL_SPGMR F2003 interface")
+diff --git a/src/sunlinsol/sptfqmr/fmod/CMakeLists.txt b/src/sunlinsol/sptfqmr/fmod/CMakeLists.txt
+index 671572f17..2ca38c8a2 100644
+--- a/src/sunlinsol/sptfqmr/fmod/CMakeLists.txt
++++ b/src/sunlinsol/sptfqmr/fmod/CMakeLists.txt
+@@ -23,7 +23,7 @@ if(BUILD_STATIC_LIBS)
+   add_dependencies(sundials_fsunlinsolsptfqmr_mod_static_obj sundials_fgeneric_static_obj)
+   set_target_properties(sundials_fsunlinsolsptfqmr_mod_static
+     PROPERTIES OUTPUT_NAME sundials_fsunlinsolsptfqmr_mod CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_fsunlinsolsptfqmr_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunlinsolsptfqmr_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -35,7 +35,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fsunlinsolsptfqmr_mod CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_fsunlinsolsptfqmr_mod_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_fsunlinsolsptfqmr_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunlinsolsptfqmr_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ message(STATUS "Added SUNLINSOL_SPTFQMR F2003 interface")
+diff --git a/src/sunmatrix/band/CMakeLists.txt b/src/sunmatrix/band/CMakeLists.txt
+index 893173a2f..f86b74244 100644
+--- a/src/sunmatrix/band/CMakeLists.txt
++++ b/src/sunmatrix/band/CMakeLists.txt
+@@ -51,7 +51,7 @@ if(BUILD_STATIC_LIBS)
+   add_library(sundials_sunmatrixband_static STATIC ${sunmatrixband_SOURCES} ${shared_SOURCES})
+   set_target_properties(sundials_sunmatrixband_static
+     PROPERTIES OUTPUT_NAME sundials_sunmatrixband CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_sunmatrixband_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_sunmatrixband_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ # Rules for building and installing the shared library:
+@@ -70,7 +70,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_sunmatrixband CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_sunmatrixband_shared
+     PROPERTIES VERSION ${sunmatrixlib_VERSION} SOVERSION ${sunmatrixlib_SOVERSION})
+-  install(TARGETS sundials_sunmatrixband_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_sunmatrixband_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ # Install the SUNMATRIXBAND header files
+@@ -84,7 +84,7 @@ if(F77_INTERFACE_ENABLE AND F77_FOUND)
+     add_library(sundials_fsunmatrixband_static STATIC ${fsunmatrixband_SOURCES})
+     set_target_properties(sundials_fsunmatrixband_static
+       PROPERTIES OUTPUT_NAME sundials_fsunmatrixband CLEAN_DIRECT_OUTPUT 1)
+-    install(TARGETS sundials_fsunmatrixband_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fsunmatrixband_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif(BUILD_STATIC_LIBS)
+ 
+   if(BUILD_SHARED_LIBS)
+@@ -97,7 +97,7 @@ if(F77_INTERFACE_ENABLE AND F77_FOUND)
+       PROPERTIES OUTPUT_NAME sundials_fsunmatrixband CLEAN_DIRECT_OUTPUT 1)
+     set_target_properties(sundials_fsunmatrixband_shared
+       PROPERTIES VERSION ${sunmatrixlib_VERSION} SOVERSION ${sunmatrixlib_SOVERSION})
+-    install(TARGETS sundials_fsunmatrixband_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fsunmatrixband_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif(BUILD_SHARED_LIBS)
+ 
+ endif(F77_INTERFACE_ENABLE AND F77_FOUND)
+diff --git a/src/sunmatrix/band/fmod/CMakeLists.txt b/src/sunmatrix/band/fmod/CMakeLists.txt
+index 40fb51f9a..89ecdc105 100644
+--- a/src/sunmatrix/band/fmod/CMakeLists.txt
++++ b/src/sunmatrix/band/fmod/CMakeLists.txt
+@@ -23,7 +23,7 @@ if(BUILD_STATIC_LIBS)
+   add_dependencies(sundials_fsunmatrixband_mod_static_obj sundials_fgeneric_static_obj)
+   set_target_properties(sundials_fsunmatrixband_mod_static
+     PROPERTIES OUTPUT_NAME sundials_fsunmatrixband_mod CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_fsunmatrixband_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunmatrixband_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -35,7 +35,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fsunmatrixband_mod CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_fsunmatrixband_mod_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_fsunmatrixband_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunmatrixband_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ message(STATUS "Added SUNMATRIX_BAND F2003 interface")
+diff --git a/src/sunmatrix/cusparse/CMakeLists.txt b/src/sunmatrix/cusparse/CMakeLists.txt
+index 6705cece9..adbcf8ae9 100644
+--- a/src/sunmatrix/cusparse/CMakeLists.txt
++++ b/src/sunmatrix/cusparse/CMakeLists.txt
+@@ -50,7 +50,7 @@ if(BUILD_STATIC_LIBS)
+   set_target_properties(sundials_sunmatrixcusparse_static PROPERTIES
+                         OUTPUT_NAME sundials_sunmatrixcusparse
+                         CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_sunmatrixcusparse_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_sunmatrixcusparse_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -68,7 +68,7 @@ if(BUILD_SHARED_LIBS)
+                         CLEAN_DIRECT_OUTPUT 1
+                         VERSION ${sunmatrixlib_VERSION}
+                         SOVERSION ${sunmatrixlib_SOVERSION})
+-  install(TARGETS sundials_sunmatrixcusparse_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_sunmatrixcusparse_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ # Install the CUDA NVector header files
+diff --git a/src/sunmatrix/dense/CMakeLists.txt b/src/sunmatrix/dense/CMakeLists.txt
+index db135e7c1..de51f2ef8 100644
+--- a/src/sunmatrix/dense/CMakeLists.txt
++++ b/src/sunmatrix/dense/CMakeLists.txt
+@@ -52,7 +52,7 @@ if(BUILD_STATIC_LIBS)
+   add_library(sundials_sunmatrixdense_static STATIC ${sunmatrixdense_SOURCES} ${shared_SOURCES})
+   set_target_properties(sundials_sunmatrixdense_static
+     PROPERTIES OUTPUT_NAME sundials_sunmatrixdense CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_sunmatrixdense_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_sunmatrixdense_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ # Rules for building and installing the shared library:
+@@ -71,7 +71,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_sunmatrixdense CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_sunmatrixdense_shared
+     PROPERTIES VERSION ${sunmatrixlib_VERSION} SOVERSION ${sunmatrixlib_SOVERSION})
+-  install(TARGETS sundials_sunmatrixdense_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_sunmatrixdense_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ # Install the SUNMATRIXDENSE header files
+@@ -85,7 +85,7 @@ if(F77_INTERFACE_ENABLE AND F77_FOUND)
+     add_library(sundials_fsunmatrixdense_static STATIC ${fsunmatrixdense_SOURCES})
+     set_target_properties(sundials_fsunmatrixdense_static
+       PROPERTIES OUTPUT_NAME sundials_fsunmatrixdense CLEAN_DIRECT_OUTPUT 1)
+-    install(TARGETS sundials_fsunmatrixdense_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fsunmatrixdense_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif(BUILD_STATIC_LIBS)
+ 
+   if(BUILD_SHARED_LIBS)
+@@ -98,7 +98,7 @@ if(F77_INTERFACE_ENABLE AND F77_FOUND)
+       PROPERTIES OUTPUT_NAME sundials_fsunmatrixdense CLEAN_DIRECT_OUTPUT 1)
+     set_target_properties(sundials_fsunmatrixdense_shared
+       PROPERTIES VERSION ${sunmatrixlib_VERSION} SOVERSION ${sunmatrixlib_SOVERSION})
+-    install(TARGETS sundials_fsunmatrixdense_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fsunmatrixdense_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif(BUILD_SHARED_LIBS)
+ 
+ endif(F77_INTERFACE_ENABLE AND F77_FOUND)
+diff --git a/src/sunmatrix/dense/fmod/CMakeLists.txt b/src/sunmatrix/dense/fmod/CMakeLists.txt
+index 5bce2e97c..037857358 100644
+--- a/src/sunmatrix/dense/fmod/CMakeLists.txt
++++ b/src/sunmatrix/dense/fmod/CMakeLists.txt
+@@ -23,7 +23,7 @@ if(BUILD_STATIC_LIBS)
+   add_dependencies(sundials_fsunmatrixdense_mod_static_obj sundials_fgeneric_static_obj)
+   set_target_properties(sundials_fsunmatrixdense_mod_static
+     PROPERTIES OUTPUT_NAME sundials_fsunmatrixdense_mod CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_fsunmatrixdense_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunmatrixdense_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -35,7 +35,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fsunmatrixdense_mod CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_fsunmatrixdense_mod_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_fsunmatrixdense_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunmatrixdense_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ message(STATUS "Added SUNMATRIX_DENSE F2003 interface")
+diff --git a/src/sunmatrix/sparse/CMakeLists.txt b/src/sunmatrix/sparse/CMakeLists.txt
+index 8968a470d..c92382a8c 100644
+--- a/src/sunmatrix/sparse/CMakeLists.txt
++++ b/src/sunmatrix/sparse/CMakeLists.txt
+@@ -51,7 +51,7 @@ if(BUILD_STATIC_LIBS)
+   add_library(sundials_sunmatrixsparse_static STATIC ${sunmatrixsparse_SOURCES} ${shared_SOURCES})
+   set_target_properties(sundials_sunmatrixsparse_static
+     PROPERTIES OUTPUT_NAME sundials_sunmatrixsparse CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_sunmatrixsparse_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_sunmatrixsparse_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ # Rules for building and installing the shared library:
+@@ -70,7 +70,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_sunmatrixsparse CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_sunmatrixsparse_shared
+     PROPERTIES VERSION ${sunmatrixlib_VERSION} SOVERSION ${sunmatrixlib_SOVERSION})
+-  install(TARGETS sundials_sunmatrixsparse_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_sunmatrixsparse_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ # Install the SUNMATRIXSPARSE header files
+@@ -84,7 +84,7 @@ if(F77_INTERFACE_ENABLE AND F77_FOUND)
+     add_library(sundials_fsunmatrixsparse_static STATIC ${fsunmatrixsparse_SOURCES})
+     set_target_properties(sundials_fsunmatrixsparse_static
+       PROPERTIES OUTPUT_NAME sundials_fsunmatrixsparse CLEAN_DIRECT_OUTPUT 1)
+-    install(TARGETS sundials_fsunmatrixsparse_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fsunmatrixsparse_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif(BUILD_STATIC_LIBS)
+ 
+   if(BUILD_SHARED_LIBS)
+@@ -97,7 +97,7 @@ if(F77_INTERFACE_ENABLE AND F77_FOUND)
+       PROPERTIES OUTPUT_NAME sundials_fsunmatrixsparse CLEAN_DIRECT_OUTPUT 1)
+     set_target_properties(sundials_fsunmatrixsparse_shared
+       PROPERTIES VERSION ${sunmatrixlib_VERSION} SOVERSION ${sunmatrixlib_SOVERSION})
+-    install(TARGETS sundials_fsunmatrixsparse_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fsunmatrixsparse_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif(BUILD_SHARED_LIBS)
+ 
+ endif(F77_INTERFACE_ENABLE AND F77_FOUND)
+diff --git a/src/sunmatrix/sparse/fmod/CMakeLists.txt b/src/sunmatrix/sparse/fmod/CMakeLists.txt
+index c48a72708..bd7640289 100644
+--- a/src/sunmatrix/sparse/fmod/CMakeLists.txt
++++ b/src/sunmatrix/sparse/fmod/CMakeLists.txt
+@@ -23,7 +23,7 @@ if(BUILD_STATIC_LIBS)
+   add_dependencies(sundials_fsunmatrixsparse_mod_static_obj sundials_fgeneric_static_obj)
+   set_target_properties(sundials_fsunmatrixsparse_mod_static
+     PROPERTIES OUTPUT_NAME sundials_fsunmatrixsparse_mod CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_fsunmatrixsparse_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunmatrixsparse_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -35,7 +35,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fsunmatrixsparse_mod CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_fsunmatrixsparse_mod_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_fsunmatrixsparse_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunmatrixsparse_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ message(STATUS "Added SUNMATRIX_SPARSE F2003 interface")
+diff --git a/src/sunnonlinsol/fixedpoint/CMakeLists.txt b/src/sunnonlinsol/fixedpoint/CMakeLists.txt
+index a4b14b6d1..b66be734c 100644
+--- a/src/sunnonlinsol/fixedpoint/CMakeLists.txt
++++ b/src/sunnonlinsol/fixedpoint/CMakeLists.txt
+@@ -51,7 +51,7 @@ if(BUILD_STATIC_LIBS)
+   add_library(sundials_sunnonlinsolfixedpoint_static STATIC ${lib_SOURCES} ${shared_SOURCES})
+   set_target_properties(sundials_sunnonlinsolfixedpoint_static
+     PROPERTIES OUTPUT_NAME sundials_sunnonlinsolfixedpoint CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_sunnonlinsolfixedpoint_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_sunnonlinsolfixedpoint_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif()
+ 
+ # Rules for building and installing the shared library:
+@@ -70,7 +70,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_sunnonlinsolfixedpoint CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_sunnonlinsolfixedpoint_shared
+     PROPERTIES VERSION ${sunnonlinsollib_VERSION} SOVERSION ${sunnonlinsollib_SOVERSION})
+-  install(TARGETS sundials_sunnonlinsolfixedpoint_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_sunnonlinsolfixedpoint_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif()
+ 
+ # Install the header files
+@@ -84,7 +84,7 @@ if(F77_INTERFACE_ENABLE AND F77_FOUND)
+     add_library(sundials_fsunnonlinsolfixedpoint_static STATIC ${flib_SOURCES})
+     set_target_properties(sundials_fsunnonlinsolfixedpoint_static
+       PROPERTIES OUTPUT_NAME sundials_fsunnonlinsolfixedpoint CLEAN_DIRECT_OUTPUT 1)
+-    install(TARGETS sundials_fsunnonlinsolfixedpoint_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fsunnonlinsolfixedpoint_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif()
+ 
+   if(BUILD_SHARED_LIBS)
+@@ -99,7 +99,7 @@ if(F77_INTERFACE_ENABLE AND F77_FOUND)
+       PROPERTIES OUTPUT_NAME sundials_fsunnonlinsolfixedpoint CLEAN_DIRECT_OUTPUT 1)
+     set_target_properties(sundials_fsunnonlinsolfixedpoint_shared
+       PROPERTIES VERSION ${sunnonlinsollib_VERSION} SOVERSION ${sunnonlinsollib_SOVERSION})
+-    install(TARGETS sundials_fsunnonlinsolfixedpoint_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fsunnonlinsolfixedpoint_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif()
+ 
+ endif()
+diff --git a/src/sunnonlinsol/fixedpoint/fmod/CMakeLists.txt b/src/sunnonlinsol/fixedpoint/fmod/CMakeLists.txt
+index c335d001a..f6b883a5c 100644
+--- a/src/sunnonlinsol/fixedpoint/fmod/CMakeLists.txt
++++ b/src/sunnonlinsol/fixedpoint/fmod/CMakeLists.txt
+@@ -24,7 +24,7 @@ if(BUILD_STATIC_LIBS)
+   add_dependencies(sundials_fsunnonlinsolfixedpoint_mod_static_obj sundials_fgeneric_static_obj)
+   set_target_properties(sundials_fsunnonlinsolfixedpoint_mod_static
+     PROPERTIES OUTPUT_NAME sundials_fsunnonlinsolfixedpoint_mod CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_fsunnonlinsolfixedpoint_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunnonlinsolfixedpoint_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -36,7 +36,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fsunnonlinsolfixedpoint_mod CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_fsunnonlinsolfixedpoint_mod_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_fsunnonlinsolfixedpoint_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunnonlinsolfixedpoint_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ message(STATUS "Added SUNNONLINSOL_FIXEDPOINT F2003 interface")
+diff --git a/src/sunnonlinsol/newton/CMakeLists.txt b/src/sunnonlinsol/newton/CMakeLists.txt
+index 68dbd9c3a..e08ce746c 100644
+--- a/src/sunnonlinsol/newton/CMakeLists.txt
++++ b/src/sunnonlinsol/newton/CMakeLists.txt
+@@ -51,7 +51,7 @@ if(BUILD_STATIC_LIBS)
+   add_library(sundials_sunnonlinsolnewton_static STATIC ${lib_SOURCES} ${shared_SOURCES})
+   set_target_properties(sundials_sunnonlinsolnewton_static
+     PROPERTIES OUTPUT_NAME sundials_sunnonlinsolnewton CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_sunnonlinsolnewton_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_sunnonlinsolnewton_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif()
+ 
+ # Rules for building and installing the shared library:
+@@ -70,7 +70,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_sunnonlinsolnewton CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_sunnonlinsolnewton_shared
+     PROPERTIES VERSION ${sunnonlinsollib_VERSION} SOVERSION ${sunnonlinsollib_SOVERSION})
+-  install(TARGETS sundials_sunnonlinsolnewton_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_sunnonlinsolnewton_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif()
+ 
+ # Install the header files
+@@ -85,7 +85,7 @@ if(F77_INTERFACE_ENABLE AND F77_FOUND)
+     add_library(sundials_fsunnonlinsolnewton_static STATIC ${flib_SOURCES})
+     set_target_properties(sundials_fsunnonlinsolnewton_static
+       PROPERTIES OUTPUT_NAME sundials_fsunnonlinsolnewton CLEAN_DIRECT_OUTPUT 1)
+-    install(TARGETS sundials_fsunnonlinsolnewton_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fsunnonlinsolnewton_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif()
+ 
+   if(BUILD_SHARED_LIBS)
+@@ -100,7 +100,7 @@ if(F77_INTERFACE_ENABLE AND F77_FOUND)
+       PROPERTIES OUTPUT_NAME sundials_fsunnonlinsolnewton CLEAN_DIRECT_OUTPUT 1)
+     set_target_properties(sundials_fsunnonlinsolnewton_shared
+       PROPERTIES VERSION ${sunnonlinsollib_VERSION} SOVERSION ${sunnonlinsollib_SOVERSION})
+-    install(TARGETS sundials_fsunnonlinsolnewton_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(TARGETS sundials_fsunnonlinsolnewton_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+   endif()
+ 
+ endif()
+diff --git a/src/sunnonlinsol/newton/fmod/CMakeLists.txt b/src/sunnonlinsol/newton/fmod/CMakeLists.txt
+index 92d1fedd2..fb7b2538e 100644
+--- a/src/sunnonlinsol/newton/fmod/CMakeLists.txt
++++ b/src/sunnonlinsol/newton/fmod/CMakeLists.txt
+@@ -24,7 +24,7 @@ if(BUILD_STATIC_LIBS)
+   add_dependencies(sundials_fsunnonlinsolnewton_mod_static_obj sundials_fgeneric_static_obj)
+   set_target_properties(sundials_fsunnonlinsolnewton_mod_static
+     PROPERTIES OUTPUT_NAME sundials_fsunnonlinsolnewton_mod CLEAN_DIRECT_OUTPUT 1)
+-  install(TARGETS sundials_fsunnonlinsolnewton_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunnonlinsolnewton_mod_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_STATIC_LIBS)
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -36,7 +36,7 @@ if(BUILD_SHARED_LIBS)
+     PROPERTIES OUTPUT_NAME sundials_fsunnonlinsolnewton_mod CLEAN_DIRECT_OUTPUT 1)
+   set_target_properties(sundials_fsunnonlinsolnewton_mod_shared
+     PROPERTIES VERSION ${nveclib_VERSION} SOVERSION ${nveclib_SOVERSION})
+-  install(TARGETS sundials_fsunnonlinsolnewton_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_fsunnonlinsolnewton_mod_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif(BUILD_SHARED_LIBS)
+ 
+ message(STATUS "Added SUNNONLINSOL_NEWTON F2003 interface")
+diff --git a/src/sunnonlinsol/petscsnes/CMakeLists.txt b/src/sunnonlinsol/petscsnes/CMakeLists.txt
+index da2d23b1f..0c1381a7e 100644
+--- a/src/sunnonlinsol/petscsnes/CMakeLists.txt
++++ b/src/sunnonlinsol/petscsnes/CMakeLists.txt
+@@ -51,7 +51,7 @@ if(BUILD_STATIC_LIBS)
+                         OUTPUT_NAME sundials_sunnonlinsolpetscsnes
+                         CLEAN_DIRECT_OUTPUT 1)
+ 
+-  install(TARGETS sundials_sunnonlinsolpetscsnes_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_sunnonlinsolpetscsnes_static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif()
+ 
+ if(BUILD_SHARED_LIBS)
+@@ -70,7 +70,7 @@ if(BUILD_SHARED_LIBS)
+                         VERSION ${sunnonlinsollib_VERSION}
+                         SOVERSION ${sunnonlinsollib_SOVERSION})
+ 
+-  install(TARGETS sundials_sunnonlinsolpetscsnes_shared DESTINATION ${CMAKE_INSTALL_LIBDIR})
++  install(TARGETS sundials_sunnonlinsolpetscsnes_shared DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT sundials-targets)
+ endif()
+ 
+ # Install the header files
