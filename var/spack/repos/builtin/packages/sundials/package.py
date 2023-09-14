@@ -301,7 +301,7 @@ class Sundials(CMakePackage, CudaPackage, ROCmPackage):
     # Fix a large number of CMake mistakes in Sundials pre v6
     patch("sundials-5.4.0-prevent-lib-name-collision.patch", when="@:6.0.0 platform=windows")
     # Add target exports to earlier CMake enabled Sundials versions
-    patch("sundaisl-5.4.0-export-targets.patch", when="@:6.0.0 platform=windows")
+    patch("sundials-5.4.0-export-targets.patch", when="@:6.0.0 platform=windows")
     # ==========================================================================
     # SUNDIALS Settings
     # ==========================================================================
