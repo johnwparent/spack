@@ -298,10 +298,13 @@ class Sundials(CMakePackage, CudaPackage, ROCmPackage):
     patch("sundials_linsol_spbcgs_target_scoping.patch", when="@6.0.0:")
     # Fix lack of #includes for referenced identifiers
     patch("examples_include_string.patch", when="@6.0.0: platform=windows")
-    # Fix a large number of CMake mistakes in Sundials pre v6
-    patch("sundials-5.4.0-prevent-lib-name-collision.patch", when="@:6.0.0 platform=windows")
-    # Add target exports to earlier CMake enabled Sundials versions
-    patch("sundials-5.4.0-export-targets.patch", when="@:6.0.0 platform=windows")
+    # # Add target exports to earlier CMake enabled Sundials versions
+    # patch("sundials-5.4.0-export-targets.patch", when="@:6.0.0 platform=windows")
+    # # Fix a large number of CMake mistakes in Sundials pre v6
+    # patch("sundials-5.4.0-prevent-lib-name-collision.patch", when="@:6.0.0 platform=windows")
+    # patch in a complete overhaul of the v5.4.0 CMake
+    patch("sundials-5.4.0-cmake-overhaul.patch", when="@:6.0.0 platform=windows")
+
     # ==========================================================================
     # SUNDIALS Settings
     # ==========================================================================
