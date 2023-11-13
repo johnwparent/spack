@@ -236,7 +236,7 @@ def _search_duplicate_specs_in_externals(error_cls):
         # Otherwise wwe need to report an error
         error_msg = "Multiple externals share the same spec: {0}".format(spec)
         try:
-            lines = [str(x._start_mark).strip() for x in entries]
+            lines = [str(x["spec"]._start_mark).strip() for x in entries]
             details = (
                 ["Please remove all but one of the following entries:"]
                 + lines
