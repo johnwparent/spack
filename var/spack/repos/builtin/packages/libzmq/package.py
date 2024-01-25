@@ -8,7 +8,7 @@ import sys
 from spack.package import *
 
 
-class Libzmq(AutotoolsPackage):
+class Libzmq(AutotoolsPackage, CMakePackage):
     """The ZMQ networking/concurrency library and core API"""
 
     homepage = "https://zguide.zeromq.org/"
@@ -57,10 +57,10 @@ class Libzmq(AutotoolsPackage):
     depends_on("libsodium", when="+libsodium")
     depends_on("libsodium@:1.0.3", when="+libsodium@:4.1.2")
 
-    depends_on("autoconf", type="build", when="@master")
-    depends_on("automake", type="build", when="@master")
-    depends_on("libtool", type="build", when="@master")
-    depends_on("pkgconfig", type="build")
+    depends_on("autoconf", type="build", when="@master build_system=autotools")
+    depends_on("automake", type="build", when="@master build_system=autotools")
+    depends_on("libtool", type="build", when="@master build_system=autotools")
+    depends_on("pkgconfig", type="build", when="build_system=autotools")
     depends_on("docbook-xml", type="build", when="+docs")
     depends_on("docbook-xsl", type="build", when="+docs")
 
@@ -92,6 +92,8 @@ class Libzmq(AutotoolsPackage):
         when="@4.3.3:4.3.4",
     )
 
+    build_system("autotools", "cmake")
+
     def url_for_version(self, version):
         if version <= Version("4.1.4"):
             url = "http://download.zeromq.org/zeromq-{0}.tar.gz"
@@ -99,6 +101,8 @@ class Libzmq(AutotoolsPackage):
             url = "https://github.com/zeromq/libzmq/releases/download/v{0}/zeromq-{0}.tar.gz"
         return url.format(version)
 
+
+class AutotoolsBuilder(spack.build_systems.autotools.AutotoolsBuilder):
     @when("@master")
     def autoreconf(self, spec, prefix):
         bash = which("bash")
@@ -121,3 +125,11 @@ class Libzmq(AutotoolsPackage):
             config_args.append("CFLAGS=-Wno-gnu")
             config_args.append("CXXFLAGS=-Wno-gnu")
         return config_args
+
+class CMakeBuilder(spack.build_systems.cmake.CMakeBuilder):
+    def cmake_args(self):
+        # Precompiled headers option produces multiple
+        # identical targets on Windows
+        return [
+            self.define("ENABLE_PRECOMPILED", False)
+        ]
