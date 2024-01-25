@@ -214,6 +214,11 @@ class Msvc(Compiler):
         return Version(re.search(Msvc.version_regex, self.cc).group(1))
 
     @property
+    def vs_version(self):
+        """This is the Visual Studio version associated with this compiler"""
+        return re.search("[0-9]{4}", self.cc).group(0)
+
+    @property
     def short_msvc_version(self):
         """
         This is the shorthand VCToolset version of form
