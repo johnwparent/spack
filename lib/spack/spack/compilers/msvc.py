@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
 import os
+import pathlib
 import re
 import subprocess
 import sys
@@ -61,7 +62,7 @@ class CmdCall:
 
 class VarsInvocation:
     def __init__(self, script):
-        self._script = script
+        self._script = str(script)
 
     def command_str(self):
         return f'"{self._script}"'
@@ -181,8 +182,8 @@ class Msvc(Compiler):
         # and stores their path, but their respective VCVARS
         # file must be invoked before useage.
         env_cmds = []
-        compiler_root = os.path.join(self.cc, "../../../../../../..")
-        vcvars_script_path = os.path.join(compiler_root, "Auxiliary", "Build", "vcvars64.bat")
+        compiler_root = pathlib.Path(self.cc).parent / ".." / ".." / ".." / ".." / ".." / ".."
+        vcvars_script_path = compiler_root / "Auxiliary" / "Build" / "vcvars64.bat"
         # get current platform architecture and format for vcvars argument
         arch = spack.platforms.real_host().default.lower()
         arch = arch.replace("-", "_")
@@ -194,11 +195,19 @@ class Msvc(Compiler):
         # for a fortran compiler
         if paths[2]:
             # If this found, it sets all the vars
-            oneapi_root = os.getenv("ONEAPI_ROOT")
-            oneapi_root_setvars = os.path.join(oneapi_root, "setvars.bat")
-            oneapi_version_setvars = os.path.join(
-                oneapi_root, "compiler", str(self.ifx_version), "env", "vars.bat"
-            )
+            for parent in pathlib.Path(paths[2]).parents:
+                if parent.name == "oneAPI":
+                    oneapi_root = parent
+                    break
+            oneapi_root_setvars = oneapi_root / "setvars.bat"
+            candidate_versions = [self.ifx_version.up_to(ver) for ver in [1, 2]]
+            candidate_versions.append(self.ifx_version)
+            for ver in candidate_versions:
+                ver = str(ver)
+                candidate_path = oneapi_root / "compiler" / ver / "env" / "vars.bat"
+                if candidate_path.exists():
+                    oneapi_version_setvars = candidate_path
+                    break
             # order matters here, the specific version env must be invoked first,
             # otherwise it will be ignored if the root setvars sets up the oneapi
             # env first
