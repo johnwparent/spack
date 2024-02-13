@@ -305,11 +305,11 @@ class Msvc(Compiler):
         # certain versions of ifx (2021.3.0:2023.1.0) do not play well with env:TMP
         # that has a "." character in the path
         # Work around by pointing tmp to the stage for the duration of the build
-        if self.fc and Version(self.fc_version(self.fc)).satisfies(
-            VersionRange("2021.3.0", "2023.1.0")
-        ):
-            new_tmp = tempfile.mkdtemp(dir=pkg.stage.path)
-            env.set("TMP", new_tmp)
+        # if self.fc and Version(self.fc_version(self.fc)).satisfies(
+        #     VersionRange("2021.3.0", "2023.1.0")
+        # ):
+        #     new_tmp = tempfile.mkdtemp(dir=pkg.stage.path)
+        #     env.set("TMP", new_tmp)
 
         env.set("CC", self.cc)
         env.set("CXX", self.cxx)
