@@ -13,6 +13,8 @@ from spack.package import *
 #  KOKKOS support using an external (i.e. spack-supplied) kokkos library.
 #  Data Warehouse (FAODEL) enable/disable
 
+is_windows = sys.platform == "win32"
+
 
 class Seacas(CMakePackage):
     """The SEACAS Project contains the Exodus and IOSS I/O libraries
@@ -125,8 +127,8 @@ class Seacas(CMakePackage):
     )
 
     # Build options
-    variant("fortran", default=True, description="Compile with Fortran support")
-    variant("shared", default=True, description="Enables the build of shared libraries")
+    variant("fortran", default=not is_windows, description="Compile with Fortran support")
+    variant("shared", default=not is_windows, description="Enables the build of shared libraries")
     variant("mpi", default=True, description="Enables MPI parallelism.")
 
     variant(
@@ -139,7 +141,7 @@ class Seacas(CMakePackage):
     variant("faodel", default=False, description="Enable Faodel")
     variant("matio", default=True, description="Compile with matio (MatLab) support")
     variant("metis", default=False, description="Compile with METIS and ParMETIS")
-    variant("x11", default=True, description="Compile with X11")
+    variant("x11", default=not is_windows, description="Compile with X11")
 
     # ###################### Dependencies ##########################
     depends_on("cmake@3.22:", when="@2023-10-24:", type="build")
@@ -179,6 +181,9 @@ class Seacas(CMakePackage):
         when="@:2021-01-20",
         msg="The Faodel TPL is only compatible with @2021-04-05 and later.",
     )
+    # Remove one file in Exodus test suite that triggers MSVC c2057 C compiler
+    # error
+    patch("seacas_remove_test_c2057_const_expr.patch", when="platform=windows")
 
     def setup_run_environment(self, env):
         env.prepend_path("PYTHONPATH", self.prefix.lib)
@@ -203,6 +208,9 @@ class Seacas(CMakePackage):
                 define(project_name_base + "_ENABLE_CXX11", True),
                 define(project_name_base + "_ENABLE_Kokkos", False),
                 define(project_name_base + "_HIDE_DEPRECATED_CODE", False),
+                # Seacas MSVC tests are not tested with Zoltan
+                # which causes build errors, skip for now
+                define(project_name_base + "_ENABLE_Zoltan", not is_windows),
                 from_variant("CMAKE_INSTALL_RPATH_USE_LINK_PATH", "shared"),
                 from_variant("BUILD_SHARED_LIBS", "shared"),
                 from_variant("SEACASExodus_ENABLE_THREADSAFE", "thread_safe"),
@@ -211,11 +219,12 @@ class Seacas(CMakePackage):
                 from_variant("TPL_ENABLE_Pthread", "thread_safe"),
                 from_variant("TPL_ENABLE_X11", "x11"),
                 from_variant(project_name_base + "_ENABLE_Fortran", "fortran"),
+                define(project_name_base + "_ENABLE_SEACAS", True)
             ]
         )
 
         options.append(from_variant("TPL_ENABLE_MPI", "mpi"))
-        if "+mpi" in spec:
+        if "+mpi" in spec and not is_windows:
             options.extend(
                 [
                     define("CMAKE_C_COMPILER", spec["mpi"].mpicc),
