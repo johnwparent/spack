@@ -483,7 +483,8 @@ class NMakeBuilder(BuildEnvironment, NMakeBuilder):
         # The trailing path seperator is REQUIRED for cURL to install
         # otherwise cURLs build system will interpret the path as a file
         # and the install will fail with ambiguous errors
-        args.append("WITH_PREFIX=%s" % self.prefix + "\\")
+        inst_prefix = self.prefix + "\\"
+        args.append(f"WITH_PREFIX={compute_sfn(inst_prefix)}")
         return args
 
     def install(self, pkg, spec, prefix):
