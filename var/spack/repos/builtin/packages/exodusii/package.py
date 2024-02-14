@@ -3,10 +3,13 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
+import sys
 from spack.package import *
 
 # TODO: Add support for a C++11 enabled installation that filters out the
 # TODO: "C++11-Disabled" flag (but only if the spec compiler supports C++11).
+
+is_windows = sys.platform == "win32"
 
 
 class Exodusii(CMakePackage):
@@ -88,9 +91,12 @@ class Exodusii(CMakePackage):
             "-DNetCDF_DIR:PATH={0}".format(spec["netcdf-c"].prefix),
             # MPI Flags #
             "-DTPL_ENABLE_MPI={0}".format("ON" if "+mpi" in spec else "OFF"),
-            "-DCMAKE_C_COMPILER={0}".format(cc_path),
-            "-DCMAKE_CXX_COMPILER={0}".format(cxx_path),
         ]
+        if not is_windows:
+            options.extend([
+                            "-DCMAKE_C_COMPILER={0}".format(cc_path),
+                            "-DCMAKE_CXX_COMPILER={0}".format(cxx_path),
+            ])
         if "+fortran" in spec:
             fc_path = spec["mpi"].mpifc if "+mpi" in spec else self.compiler.f90
             options.extend(
