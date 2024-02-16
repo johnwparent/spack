@@ -45,10 +45,10 @@ class Msmpi(Package):
         # MSMPI does not vendor compiler wrappers, instead arguments should
         # be manually supplied to compiler by consuming package
         # Note: This is not typical of MPI installations
-        spec.mpicc = spack_cc
-        spec.mpicxx = spack_cxx
-        spec.mpifc = spack_fc
-        spec.mpif77 = spack_f77
+        spec.mpicc = spec.package.compiler.cc
+        spec.mpicxx = spec.package.compiler.cxx
+        spec.mpifc = spec.package.compiler.fc
+        spec.mpif77 = spec.package.compiler.f77
 
 
 class GenericBuilder(GenericBuilder):
