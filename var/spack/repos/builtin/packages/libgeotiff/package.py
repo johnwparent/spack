@@ -59,7 +59,8 @@ class Libgeotiff(CMakePackage, AutotoolsPackage):
     # Patch required to fix absolute path issue in unit tests
     # https://github.com/OSGeo/libgeotiff/issues/16
     patch("a76c686441398669422cb728411abd2dec358f7f.patch", level=2, when="@1.5.0:1.5.1")
-
+    patch("libgeotiff_proper_tiff_link.patch", when="platform=windows")
+    patch("libgeotiff_link_proj_to_utils.patch", when="platform=windows")
 
 
 class AutotoolsBuilder(spack.build_systems.autotools.AutotoolsBuilder):

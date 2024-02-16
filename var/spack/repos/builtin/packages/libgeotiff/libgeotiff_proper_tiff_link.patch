@@ -1,0 +1,45 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 001df67..891ea4f 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -185,6 +185,15 @@ IF(WITH_TIFF)
+         ADD_DEFINITIONS(-DHAVE_TIFF=1)
+     ENDIF(TIFF_FOUND)
+ ENDIF(WITH_TIFF)
++set(CONFIG_DEPENDENCIES "")
++if(TARGET TIFF::TIFF)
++    set(TIFF_LIBRARIES TIFF::TIFF)
++    string(APPEND CONFIG_DEPENDENCIES "  find_dependency(TIFF)\n")
++endif()
++if(TARGET TIFF::tiff)
++    set(TIFF_LIBRARIES TIFF::tiff)
++    string(APPEND CONFIG_DEPENDENCIES "  find_dependency(TIFF)\n")
++endif()
+ 
+ # Turn off TOWGS84 support
+ SET(WITH_TOWGS84 TRUE CACHE BOOL "Build with TOWGS84 support")
+@@ -330,14 +339,8 @@ endif()
+ SET_TARGET_PROPERTIES(${GEOTIFF_LIBRARY_TARGET} PROPERTIES
+    OUTPUT_NAME ${GEOTIFF_LIB_NAME})
+ 
+-set(CONFIG_DEPENDENCIES "")
+-if(TARGET TIFF::TIFF)
+-    set(TIFF_LIBRARIES TIFF::TIFF)
+-    string(APPEND CONFIG_DEPENDENCIES "  find_dependency(TIFF)\n")
+-endif()
+ target_link_libraries(${GEOTIFF_LIBRARY_TARGET} PUBLIC
+     ${TIFF_LIBRARIES})
+-
+ if(TARGET PROJ::proj)
+     set(PROJ_LIBRARIES PROJ::proj)
+     string(APPEND CONFIG_DEPENDENCIES "  find_dependency(PROJ CONFIG)\n")
+diff --git a/libxtiff/CMakeLists.txt b/libxtiff/CMakeLists.txt
+index 747313c..2c9c259 100644
+--- a/libxtiff/CMakeLists.txt
++++ b/libxtiff/CMakeLists.txt
+@@ -7,3 +7,5 @@
+ ###############################################################################
+ 
+ ADD_LIBRARY(xtiff STATIC xtiff.c)
++target_link_libraries(xtiff PUBLIC ${TIFF_LIBRARIES})
++
