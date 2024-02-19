@@ -585,6 +585,8 @@ class CMakeBuilder(CMakeBuilder):
             self.define_from_variant("BUILD_JAVA_BINDINGS", "java"),
             self.define_from_variant("BUILD_CSHARP_BINDINGS", "csharp"),
         ]
+        if sys.platform == "win32":
+            args.append(self.define("BASH_COMPLETIONS_DIR_DEFAULT", ""))
 
         # Remove empty strings
         args = [arg for arg in args if arg]
