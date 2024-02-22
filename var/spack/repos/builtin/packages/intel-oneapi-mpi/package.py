@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
 
+import re
 from spack.package import *
 
 
@@ -18,6 +19,8 @@ class IntelOneapiMpi(IntelOneApiLibraryPackage):
     """
 
     maintainers("rscohn2")
+
+    executables = ["mpiexec"]
 
     homepage = "https://software.intel.com/content/www/us/en/develop/tools/oneapi/components/mpi-library.html"
 
@@ -131,6 +134,13 @@ class IntelOneapiMpi(IntelOneApiLibraryPackage):
             return ("-i_mpi_ofi_internal=0",)
         else:
             return ()
+
+    @classmethod
+    def determine_version(cls, exe):
+        output = Executable(exe)("--version", output=str, error=str)
+        match = re.search(r"Version (\S+) Build", output).group(1)
+        match += ".0"
+        return Version(match) if match else None
 
     def setup_dependent_package(self, module, dep_spec):
         if "+generic-names" in self.spec:
