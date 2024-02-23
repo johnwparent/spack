@@ -63,6 +63,8 @@ ModificationList = List[Union["NameModifier", "NameValueModifier"]]
 
 _find_unsafe = re.compile(r"[^\w@%+=:,./-]", re.ASCII).search
 
+is_windows = sys.platform == "win32"
+
 
 def double_quote_escape(s):
     """Return a shell-escaped version of the string *s*.
@@ -762,10 +764,10 @@ class EnvironmentModifications:
                 r"LMOD_(.*)",
             ]
         )
-
+        devnull = os.devnull if not is_windows else ""
         # Compute the environments before and after sourcing
         before = sanitize(
-            environment_after_sourcing_files(os.devnull, **kwargs),
+            environment_after_sourcing_files(devnull, **kwargs),
             exclude=exclude,
             include=include,
         )
@@ -1069,7 +1071,8 @@ def environment_after_sourcing_files(
 
         dump_cmd = "import os, json; print(json.dumps(dict(os.environ)))"
         dump_environment_cmd = python_cmd + f' -E -c "{dump_cmd}"'
-
+        if is_windows and not file_and_args:
+            concatenate_on_success = ""
         # Try to source the file
         source_file_arguments = " ".join(
             [source_file, suppress_output, concatenate_on_success, dump_environment_cmd]
