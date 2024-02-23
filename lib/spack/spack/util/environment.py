@@ -1060,7 +1060,7 @@ def environment_after_sourcing_files(
         shell_options_list = shell_options.split()
 
         source_file = [source_command]
-        source_file.extend(f"{x}" if is_windows else x for x in file_and_args)
+        source_file.extend(f'"{x}"' if is_windows else x for x in file_and_args)
         source_file = " ".join(source_file)
 
         # If the environment contains 'python' use it, if not
@@ -1068,7 +1068,7 @@ def environment_after_sourcing_files(
         # Python interpreter, not necessarily sys.executable.
         python_cmd = which("python3", "python", "python2")
         python_cmd = python_cmd.path if python_cmd else sys.executable
-        python_cmd = f"{python_cmd}" if is_windows else python_cmd
+        python_cmd = f'"{python_cmd}"' if is_windows else python_cmd
         dump_cmd = "import os, json; print(json.dumps(dict(os.environ)))"
         dump_environment_cmd = python_cmd + f' -E -c "{dump_cmd}"'
         nonlocal concatenate_on_success
