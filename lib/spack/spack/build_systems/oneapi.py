@@ -8,6 +8,7 @@ import os
 import platform
 import shutil
 from os.path import basename, isdir
+import sys
 
 from llnl.util import tty
 from llnl.util.filesystem import HeaderList, LibraryList, find_libraries, join_path, mkdirp
@@ -20,6 +21,8 @@ from spack.util.environment import EnvironmentModifications
 from spack.util.executable import Executable
 
 from .generic import Package
+
+is_windows = sys.platform == "win32"
 
 
 class IntelOneApiPackage(Package):
@@ -37,7 +40,6 @@ class IntelOneApiPackage(Package):
         "target=aarch64:",
         "platform=darwin:",
         "platform=cray:",
-        "platform=windows:",
     ]:
         conflicts(c, msg="This package in only available for x86_64 and Linux")
 
@@ -141,9 +143,10 @@ class IntelOneApiPackage(Package):
         """
         # Only if environment modifications are desired (default is +envmods)
         if "~envmods" not in self.spec:
+            vars_script = "vars.bat" if is_windows else "vars.sh"
             env.extend(
                 EnvironmentModifications.from_sourcing_file(
-                    self.component_prefix.env.join("vars.sh"), *self.env_script_args
+                    self.component_prefix.env.join(vars_script), *self.env_script_args
                 )
             )
 
