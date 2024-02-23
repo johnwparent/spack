@@ -1071,7 +1071,8 @@ def environment_after_sourcing_files(
 
         dump_cmd = "import os, json; print(json.dumps(dict(os.environ)))"
         dump_environment_cmd = python_cmd + f' -E -c "{dump_cmd}"'
-        if is_windows and not file_and_args:
+        concatenate_on_success = concatenate_on_success
+        if is_windows and not file_and_args[:]:
             concatenate_on_success = ""
         # Try to source the file
         source_file_arguments = " ".join(
