@@ -1060,7 +1060,7 @@ def environment_after_sourcing_files(
         shell_options_list = shell_options.split()
 
         source_file = [source_command]
-        source_file.extend(f'"{x}"' if is_windows else x for x in file_and_args)
+        source_file.extend(f'"{x}"' if is_windows else x for x in file_and_args if x)
         source_file = " ".join(source_file)
 
         # If the environment contains 'python' use it, if not
