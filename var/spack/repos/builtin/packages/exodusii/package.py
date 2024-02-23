@@ -105,8 +105,6 @@ class Exodusii(CMakePackage):
             ])
         if "+fortran" in spec:
             fc_path = spec["mpi"].mpifc if "+mpi" in spec else self.compiler.f90
-            if is_windows:
-                fc_path = pathlib.Path(fc_path).as_posix()
             options.extend(
                 [
                     "-DSEACASProj_ENABLE_Fortran:BOOL=ON",

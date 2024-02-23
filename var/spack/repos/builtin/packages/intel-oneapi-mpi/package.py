@@ -5,8 +5,10 @@
 
 
 import re
+import sys
 from spack.package import *
 
+is_windows = sys.platform == "win32"
 
 @IntelOneApiPackage.update_description
 class IntelOneapiMpi(IntelOneApiLibraryPackage):
@@ -180,7 +182,8 @@ class IntelOneapiMpi(IntelOneApiLibraryPackage):
     @property
     def libs(self):
         libs = []
-        if "+ilp64" in self.spec:
+        if self.spec.satisfies("+ilp64"):
+            ilp64_dir = self.component_prefix.lib.release if not is_windows else self.component_prefix.lib
             libs += find_libraries("libmpi_ilp64", self.component_prefix.lib.release)
         libs += find_libraries(["libmpicxx", "libmpifort"], self.component_prefix.lib)
         libs += find_libraries("libmpi", self.component_prefix.lib.release)
