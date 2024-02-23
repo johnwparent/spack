@@ -147,28 +147,28 @@ class IntelOneApiPackage(Package):
         if "~envmods" not in self.spec:
 
             if is_windows:
-                vars_script = "vars.bat"
-                mpi_vars = VarsInvocation(self.component_prefix.env.join(vars_script))
-                out = CmdCall(mpi_vars)()
-                int_env = dict(
-                    (key, value)
-                    for key, _, value in (line.partition("=") for line in out.splitlines())
-                    if key and value
-                )
+                pass
+                # vars_script = "vars.bat"
+                # mpi_vars = VarsInvocation(self.component_prefix.env.join(vars_script))
+                # out = CmdCall(mpi_vars)()
+                # int_env = dict(
+                #     (key, value)
+                #     for key, _, value in (line.partition("=") for line in out.splitlines())
+                #     if key and value
+                # )
 
-                for env_var in int_env:
-                    if os.pathsep not in int_env[env_var]:
-                        env.set(env_var, int_env[env_var])
-                    else:
-                        env.set_path(env_var, int_env[env_var].split(os.pathsep))
-
-        else:
-            vars_script = "vars.sh"
-            env.extend(
-                EnvironmentModifications.from_sourcing_file(
-                    self.component_prefix.env.join(vars_script), *self.env_script_args
+                # for env_var in int_env:
+                #     if os.pathsep not in int_env[env_var]:
+                #         env.set(env_var, int_env[env_var])
+                #     else:
+                #         env.set_path(env_var, int_env[env_var].split(os.pathsep))
+            else:
+                vars_script = "vars.sh"
+                env.extend(
+                    EnvironmentModifications.from_sourcing_file(
+                        self.component_prefix.env.join(vars_script), *self.env_script_args
+                    )
                 )
-            )
 
     def symlink_dir(self, src, dest):
         # Taken from: https://github.com/spack/spack/pull/31285/files
