@@ -523,8 +523,8 @@ class Hdf5(CMakePackage):
                 [
                     "-DMPI_CXX_COMPILER:PATH=%s" % spec["mpi"].mpicxx,
                     "-DMPI_C_COMPILER:PATH=%s" % spec["mpi"].mpicc,
-                    "-DCMAKE_C_COMPILER:PATH=%s" % spec["mpi"].mpicc,
-                    "-DCMAKE_CXX_COMPILER:PATH=%s" % spec["mpi"].mpicxx
+                    "-DCMAKE_C_COMPILER:PATH=%s" % self.compiler.cc,
+                    "-DCMAKE_CXX_COMPILER:PATH=%s" % self.compiler.cxx
                 ]
             )
 
