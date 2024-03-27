@@ -76,7 +76,7 @@ class VarsInvocation:
 class VCVarsInvocation(VarsInvocation):
     def __init__(self, script, arch, msvc_version):
         super(VCVarsInvocation, self).__init__(script)
-        self._arch = arch
+        self._arch = arch if arch else ''
         self._msvc_version = msvc_version
 
     @property
@@ -187,6 +187,11 @@ class Msvc(Compiler):
         vcvars_script_path = os.path.join(compiler_root, "Auxiliary", "Build", "vcvarsall.bat")
         # get current platform architecture and format for vcvars argument
         arch = str(archspec.cpu.host().family).lower()
+        # TODO: johnwparent - find correct mapping of archspec to arm
+        # Can't find on vcvarsall docs page, might need to look for arm
+        # specific option, for now, allow vcvarsall to find its own arch
+        if "aarch" in arch:
+            arch = ''
         self.vcvars_call = VCVarsInvocation(vcvars_script_path, arch, self.msvc_version)
         env_cmds.append(self.vcvars_call)
         # Below is a check for a valid fortran path
