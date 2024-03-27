@@ -191,7 +191,7 @@ class Msvc(Compiler):
         # Can't find on vcvarsall docs page, might need to look for arm
         # specific option, for now, allow vcvarsall to find its own arch
         if "aarch" in arch:
-            arch = ''
+            arch = arch.replace("aarch", "arm")
         self.vcvars_call = VCVarsInvocation(vcvars_script_path, arch, self.msvc_version)
         env_cmds.append(self.vcvars_call)
         # Below is a check for a valid fortran path
