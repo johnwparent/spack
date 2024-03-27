@@ -184,13 +184,9 @@ class Msvc(Compiler):
         # file must be invoked before useage.
         env_cmds = []
         compiler_root = os.path.join(self.cc, "../../../../../../..")
-        vcvars_script_path = os.path.join(compiler_root, "Auxiliary", "Build", "vcvars64.bat")
+        vcvars_script_path = os.path.join(compiler_root, "Auxiliary", "Build", "vcvarsall.bat")
         # get current platform architecture and format for vcvars argument
-        arch = spack.platforms.real_host().default.lower()
-        arch = arch.replace("-", "_")
-        if str(archspec.cpu.host().family) == "x86_64":
-            arch = "amd64"
-
+        arch = str(archspec.cpu.host().family).lower()
         self.vcvars_call = VCVarsInvocation(vcvars_script_path, arch, self.msvc_version)
         env_cmds.append(self.vcvars_call)
         # Below is a check for a valid fortran path
