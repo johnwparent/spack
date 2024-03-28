@@ -1239,6 +1239,7 @@ def windows_sfn(path: os.PathLike):
     """
     # This should not be run-able on linux/macos
     if sys.platform != "win32":
+        tty.info("THIS SHOULD NOT HAPPEN")
         return path
     path = str(path)
     import ctypes
