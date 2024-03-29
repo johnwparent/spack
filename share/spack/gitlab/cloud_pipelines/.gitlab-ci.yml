@@ -203,7 +203,7 @@ default:
     - . .\share\spack\setup-env.ps1
     - spack external find --not-buildable cmake ninja win-wdk win-sdk wgl msmpi
   tags: ["spack", "public", "medium", "x86_64-win"]
-  image: "ghcr.io/johnwparent/windows-servercore21h2:sha-1e4430a"
+  image: "ghcr.io/johnwparent/windows-servercore21h2:sha-dade9da"
 
 .generate-deprecated:
   extends: [ ".base-job" ]
