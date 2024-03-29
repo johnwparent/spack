@@ -16,6 +16,7 @@ import re
 import sys
 from contextlib import contextmanager
 
+import llnl.util.tty as tty
 from llnl.util.filesystem import windows_sfn
 from llnl.util.lang import match_predicate
 from llnl.util.symlink import symlink
@@ -288,6 +289,8 @@ class Perl(Package):  # Perl doesn't use Autotools, it should subclass Package
             args.append("CCTYPE=%s" % self.compiler.short_msvc_version)
         else:
             raise RuntimeError("Perl unsupported for non MSVC compilers on Windows")
+        iinst_top = windows_sfn(self.prefix)
+        tty.info(f"PERL INSTALL FROM SFN {iinst_top}")
         args.append("INST_TOP=%s" % windows_sfn(self.prefix))
         args.append("INST_ARCH=\\$(ARCHNAME)")
         if self.spec.satisfies("~shared"):
