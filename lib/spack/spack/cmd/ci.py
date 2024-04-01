@@ -556,7 +556,7 @@ def ci_rebuild(args):
     # No hash match anywhere means we need to rebuild spec
 
     # Start with spack arguments
-    spack_cmd = [SPACK_COMMAND, "--color=always", "--backtrace", "--verbose"]
+    spack_cmd = [SPACK_COMMAND, "-d", "--color=always", "--backtrace", "--verbose"]
 
     config = cfg.get("config")
     if not config["verify_ssl"]:
