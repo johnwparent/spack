@@ -15,6 +15,6 @@ ci:
       - spack.ps1 config add "config:install_tree:projections:${SPACK_JOB_SPEC_PKG_NAME}:'morepadding/{architecture}/{compiler.name}-{compiler.version}/{name}-{version}-{hash}'"
       - mkdir ${SPACK_ARTIFACTS_ROOT}/user_data
       - spack.ps1 --backtrace ci rebuild | Tee-Object -FilePath "${env:SPACK_ARTIFACTS_ROOT}/user_data/pipeline_out.txt" 2>&1 | Tee-Object -FilePath "${env:SPACK_ARTIFACTS_ROOT}/user_data/pipeline_err.txt"
-      image: "ghcr.io/johnwparent/windows-servercore21h2:sha-dade9da"
+      image: "ghcr.io/johnwparent/windows-servercore21h2:sha-e8d369c"
   - signing-job-remove:
       script:: [no-signing-on-windows]
