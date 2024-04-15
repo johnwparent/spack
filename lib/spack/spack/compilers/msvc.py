@@ -167,6 +167,9 @@ class Msvc(Compiler):
         # VCVARS is located at a fixed location, referencable
         # idiomatically by the following relative path from the
         # compiler.
+
+
+
         # Spack first finds the compilers via VSWHERE
         # and stores their path, but their respective VCVARS
         # file must be invoked before useage.
