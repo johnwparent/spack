@@ -382,6 +382,9 @@ class Perl(Package):  # Perl doesn't use Autotools, it should subclass Package
         if sys.platform == "win32":
             win32_dir = os.path.join(self.stage.source_path, "win32")
             win32_dir = windows_sfn(win32_dir)
+            # Need to ensure perl install root exists
+            # before install
+            mkdirp(self.prefix)
             with working_dir(win32_dir):
                 nmake("install", *self.nmake_arguments(), ignore_quotes=True)
         else:
