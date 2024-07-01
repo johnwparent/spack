@@ -16,6 +16,8 @@ from spack.paths import spack_root
 datadir = os.path.join(spack_root, "lib", "spack", "spack", "test", "data", "binary_resource")
 file_file = os.path.join(datadir, "file.bat")
 
+pytestmark = pytest.mark.only_windows("only runs on windows")
+
 
 @pytest.fixture
 def mock_binary_resource_root(monkeypatch, tmpdir):
