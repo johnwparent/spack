@@ -45,6 +45,8 @@ class Libffi(AutotoolsPackage):
         when="@3.4.3:3.4.4",
     )
 
+    provides("ffi")
+
     @property
     def headers(self):
         # The headers are probably in self.prefix.lib but we search everywhere
