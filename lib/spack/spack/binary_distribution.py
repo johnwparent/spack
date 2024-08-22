@@ -55,10 +55,10 @@ import spack.user_environment
 import spack.util.archive
 import spack.util.crypto
 import spack.util.file_cache as file_cache
+import spack.util.filesystem
 import spack.util.gpg
 import spack.util.parallel
 import spack.util.path
-import spack.util.spack_filesystem as ssys
 import spack.util.spack_json as sjson
 import spack.util.spack_yaml as syaml
 import spack.util.timer as timer
@@ -689,7 +689,7 @@ def get_buildfile_manifest(spec):
     # Non-symlinks.
     for rel_path in visitor.files:
         abs_path = os.path.join(root, rel_path)
-        m_type, m_subtype = ssys.mime_type(abs_path)
+        m_type, m_subtype = spack.util.filesystem.mime_type(abs_path)
 
         if relocate.needs_binary_relocation(m_type, m_subtype):
             # Why is this branch not part of needs_binary_relocation? :(
