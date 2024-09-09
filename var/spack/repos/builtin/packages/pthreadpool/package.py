@@ -26,6 +26,9 @@ class Pthreadpool(CMakePackage):
     depends_on("c", type="build")
     depends_on("cxx", type="build")
 
+    variant("benchmarks", default=False, description="Build pthreadpool with benchmark support")
+    variant("tests", default=False, description="Build pthreadpool with testing enabled")
+
     generator("ninja")
     depends_on("cmake@3.5:", type="build")
     depends_on("python", type="build")
@@ -43,6 +46,7 @@ class Pthreadpool(CMakePackage):
         sha256="ce7366fe57eb49928311189cb0e40e0a8bf3d3682fca89af30d884c25e983786",
         destination="deps",
         placement="googletest",
+        when="+tests"
     )
     resource(
         name="googlebenchark",
@@ -50,22 +54,38 @@ class Pthreadpool(CMakePackage):
         sha256="bdefa4b03c32d1a27bd50e37ca466d8127c1688d834800c38f3c587a396188ee",
         destination="deps",
         placement="googlebenchmark",
+        when="+benchmarks"
     )
 
     def cmake_args(self):
-        return [
+        args = [
             self.define("FXDIV_SOURCE_DIR", join_path(self.stage.source_path, "deps", "fxdiv")),
-            self.define(
-                "GOOGLETEST_SOURCE_DIR", join_path(self.stage.source_path, "deps", "googletest")
-            ),
-            self.define(
-                "GOOGLEBENCHMARK_SOURCE_DIR",
-                join_path(self.stage.source_path, "deps", "googlebenchmark"),
-            ),
-            # https://github.com/pytorch/pytorch/blob/main/cmake/Dependencies.cmake
-            self.define("PTHREADPOOL_BUILD_TESTS", False),
-            self.define("PTHREADPOOL_BUILD_BENCHMARKS", False),
             self.define("PTHREADPOOL_LIBRARY_TYPE", "static"),
             self.define("PTHREADPOOL_ALLOW_DEPRECATED_API", True),
             self.define("CMAKE_POSITION_INDEPENDENT_CODE", True),
         ]
+        if self.spec.satifies("+benchmarks"):
+            args.extend([
+                self.define(
+                    "GOOGLEBENCHMARK_SOURCE_DIR",
+                    join_path(self.stage.source_path, "deps", "googlebenchmark"),
+                ),
+                self.define("PTHREADPOOL_BUILD_BENCHMARKS", True),
+            ])
+        else:
+            args.append(self.define("PTHREADPOOL_BUILD_BENCHMARKS", False))
+
+        if self.spec.satisfies("+tests"):
+            # https://github.com/pytorch/pytorch/blob/main/cmake/Dependencies.cmake
+            args.extend([
+                self.define("PTHREADPOOL_BUILD_TESTS", True),
+                self.define(
+                    "GOOGLETEST_SOURCE_DIR", join_path(self.stage.source_path, "deps", "googletest")
+                ),
+            ])
+        else:
+            args.append(self.define("PTHREADPOOL_BUILD_TESTS", False))
+
+        return args
+
+
