@@ -64,7 +64,7 @@ class Pthreadpool(CMakePackage):
             self.define("PTHREADPOOL_ALLOW_DEPRECATED_API", True),
             self.define("CMAKE_POSITION_INDEPENDENT_CODE", True),
         ]
-        if self.spec.satifies("+benchmarks"):
+        if self.spec.satisfies("+benchmarks"):
             args.extend([
                 self.define(
                     "GOOGLEBENCHMARK_SOURCE_DIR",
