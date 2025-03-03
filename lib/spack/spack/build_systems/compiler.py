@@ -44,6 +44,15 @@ class CompilerPackage(spack.package_base.PackageBase):
     #: Static definition of languages supported by this class
     compiler_languages: Sequence[str] = ["c", "cxx", "fortran"]
 
+    #: Default compiler argument for compilation only
+    compile_only_option = "-c"
+
+    #: Default compiler flag for verbose output
+    compile_verbose_option = "-v"
+
+    #: Default compiler flag for object file output name
+    compile_out_option = "-o"
+
     #: Relative path to compiler wrappers
     link_paths: Dict[str, str] = {}
 

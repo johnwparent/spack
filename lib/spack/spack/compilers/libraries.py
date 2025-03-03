@@ -2,20 +2,22 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 import contextlib
+import enum
 import hashlib
 import json
 import os
+import pathlib
 import re
 import shutil
 import stat
 import sys
 import tempfile
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 import llnl.path
 import llnl.util.lang
 from llnl.util import tty
-from llnl.util.filesystem import path_contains_subdirectory, paths_containing_libs
+from llnl.util.filesystem import copy, path_contains_subdirectory, paths_containing_libs
 
 import spack.caches
 import spack.schema.environment
@@ -136,19 +138,24 @@ def _parse_link_paths(string):
     tty.debug(f"implicit link dirs: result: {', '.join(implicit_link_dirs)}")
     return implicit_link_dirs
 
-
-class CompilerPropertyDetector:
-
-    def __init__(self, compiler_spec: spack.spec.Spec):
+class CompilerExecutor:
+    """Encapsulates a compile execution"""
+    def __init__(self, compiler_spec: spack.spec.Spec, *, file:Optional[Union[str, pathlib.Path]]=None, compile_str:Optional[str]=None):
         assert compiler_spec.concrete, "only concrete compiler specs are allowed"
         self.spec = compiler_spec
         self.cache = COMPILER_CACHE
-
+        self.file = file
+        self.compile_str = file
+        self._compilation_target_check()
+        
     @contextlib.contextmanager
     def compiler_environment(self):
         """Sets the environment to run this compiler"""
 
         # No modifications for Spack managed compilers
+        # MSVC is always external for now, but that might not be true in the future
+        # so lets check
+        # MSVC _always_ needs a special environment (VCVARS)
         if not self.spec.external:
             yield
             return
@@ -156,7 +163,10 @@ class CompilerPropertyDetector:
         # Avoid modifying os.environ if possible.
         environment = self.spec.extra_attributes.get("environment", {})
         modules = self.spec.external_modules or []
-        if not self.spec.external_modules and not environment:
+        # Currently only implemented by MSVC, basically non install time specific
+        # setup_environment
+        compiler_specific_env = getattr(self.spec.package, "setup_compile_test_environment", None)
+        if not (self.spec.external_modules or environment or compiler_specific_env):
             yield
             return
 
@@ -169,7 +179,11 @@ class CompilerPropertyDetector:
                 spack.util.module_cmd.load_module(module)
 
             # apply other compiler environment changes
-            spack.schema.environment.parse(environment).apply_modifications()
+            env = spack.schema.environment.parse(environment)
+            if compiler_specific_env:
+                self.spec.package.setup_compile_test_environment(env)
+
+            env.apply_modifications()
 
             yield
         finally:
@@ -177,7 +191,19 @@ class CompilerPropertyDetector:
             os.environ.clear()
             os.environ.update(backup_env)
 
-    def _compile_dummy_c_source(self) -> Optional[str]:
+    def _compilation_target_check(self):
+        if (self.compile_str and self.file):
+            raise RuntimeError("Compile Execution given too many compilation targets, please specify a file, OR string to compile")
+        if not (self.compile_str or self.file):
+            raise RuntimeError("Compile Execution requires something to compile, please provide either a string or file to compile")
+
+    def _compile_dummy_c_source(self, *args, **kwargs) -> Optional[str]:
+        # TODO: emit warning if we're overriding base string/file setting?
+        if kwargs.get("file", None):
+            self.file = kwargs["file"]
+        if kwargs.get("compile_str", None):
+            self.compile_str = kwargs["compile_str"]
+        self._compilation_target_check()
         compiler_pkg = self.spec.package
         if getattr(compiler_pkg, "cc"):
             cc = compiler_pkg.cc
@@ -190,14 +216,16 @@ class CompilerPropertyDetector:
             return None
 
         try:
-            tmpdir = tempfile.mkdtemp(prefix="spack-implicit-link-info")
+            tmpdir = tempfile.mkdtemp(prefix="spack-compiler-inspection")
             fout = os.path.join(tmpdir, "output")
             fin = os.path.join(tmpdir, f"main.{ext}")
-
-            with open(fin, "w", encoding="utf-8") as csource:
-                csource.write(
-                    "int main(int argc, char* argv[]) { (void)argc; (void)argv; return 0; }\n"
-                )
+            if self.compile_str:
+                with open(fin, "w", encoding="utf-8") as csource:
+                    csource.write(
+                        f"{self.compile_str}"
+                    )
+            else:
+                copy(self.file, fin)
             cc_exe = spack.util.executable.Executable(cc)
 
             if self.spec.external:
@@ -210,26 +238,37 @@ class CompilerPropertyDetector:
                     current_flags = compiler_flags.get(flag_type, "").strip()
                     if current_flags:
                         cc_exe.add_default_arg(*current_flags.split(" "))
-
+            verbose = compiler_pkg.compile_verbose_option
+            f_output = compiler_pkg.compile_out_option
             with self.compiler_environment():
-                return cc_exe("-v", fin, "-o", fout, output=str, error=str)
+                return cc_exe(verbose, fin, f_output, fout, *args, output=str, error=str)
         except spack.util.executable.ProcessError as pe:
             tty.debug(f"ProcessError: Command exited with non-zero status: {pe.long_message}")
             return None
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
 
-    def compiler_verbose_output(self) -> Optional[str]:
-        return self.cache.get(self.spec).c_compiler_output
+    def compiler_verbose_output(self, *extra_compiler_args, file:Optional[Union[str, pathlib.Path]]=None, compile_str:Optional[str]=None) -> Optional[str]:
+        return self.cache.get(self.spec, *extra_compiler_args, file=file, compile_str=compile_str).c_compiler_output
+
+
+class CompilerPropertyDetector:
+    def __init__(self, compiler: spack.spec.Spec):
+        self._executor = CompilerExecutor(compiler)
+        self._compiler = compiler
+
+class CompilerDynamicLinkerDetector(CompilerPropertyDetector):
+    def __init__(self, compiler: spack.spec.Spec):
+        super(CompilerDynamicLinkerDetector, self).__init__(compiler)
+        self._compiler_test_str = "int main(int argc, char* argv[]) { (void)argc; (void)argv; return 0; }\n"
 
     def default_dynamic_linker(self) -> Optional[str]:
-        output = self.compiler_verbose_output()
-
+        output = self._executor.compiler_verbose_output(compile_str=self._compiler_test_str) 
         if not output:
             return None
-
         return spack.util.libc.parse_dynamic_linker(output)
 
+class CompilerLibcDetector(CompilerDynamicLinkerDetector):
     def default_libc(self) -> Optional[spack.spec.Spec]:
         """Determine libc targeted by the compiler from link line"""
         # technically this should be testing the target platform of the compiler, but we don't have
@@ -244,19 +283,51 @@ class CompilerPropertyDetector:
 
         return spack.util.libc.libc_from_dynamic_linker(dynamic_linker)
 
+
+class CompilerRPathDetector(CompilerDynamicLinkerDetector):
     def implicit_rpaths(self) -> List[str]:
-        output = self.compiler_verbose_output()
+        output = self._executor.compiler_verbose_output(compile_str=self._compiler_test_str)
         if output is None:
             return []
 
         link_dirs = parse_non_system_link_dirs(output)
-        all_required_libs = list(self.spec.package.required_libs) + ["libc", "libc++", "libstdc++"]
+        all_required_libs = list(self._compiler.package.required_libs) + ["libc", "libc++", "libstdc++"]
         dynamic_linker = self.default_dynamic_linker()
         result = DefaultDynamicLinkerFilter(dynamic_linker)(
             paths_containing_libs(link_dirs, all_required_libs)
         )
         return list(result)
+    
 
+class CompilerMSCDetector(CompilerPropertyDetector):
+    def msc_version(self):
+        compiler_test_str = "_MSC_VER"
+        output = self._executor.compiler_verbose_output("/NOLOGO", "/E", compile_str=compiler_test_str)
+        if not output:
+            raise RuntimeError(f"Unable to execute compiler {self._compiler}")
+        msc_ver_reg = re.compile(r"\d\d\d\d")
+        msc_ver_search = re.search(msc_ver_reg, output)
+        if not msc_ver_search:
+            raise RuntimeError(f"Unable to detect MSC_VER from output {output}")
+        return msc_ver_search.group(0)
+
+class CompilerMFCDetector(CompilerPropertyDetector):
+        def msc_version(self):
+            compiler_test_str = "_MFC_VER"
+            output = self._executor.compiler_verbose_output("/NOLOGO", "/E", compile_str=compiler_test_str)
+            if not output:
+                raise RuntimeError(f"Unable to execute compiler {self._compiler}")
+            msc_ver_reg = re.compile(r"\d\d\d\d")
+            msc_ver_search = re.search(msc_ver_reg, output)
+            if not msc_ver_search:
+                raise RuntimeError(f"Unable to detect MSC_VER from output {output}")
+            return msc_ver_search.group(0)
+    
+class LinuxCompilerInspector(CompilerLibcDetector, CompilerRPathDetector):
+    """Provides an interface to inspect a compiler on the Linux Platform"""
+
+class MSVCCompilerInspector(CompilerMFCDetector, CompilerMSCDetector):
+    """Provides an interface to inspect an MSVC based compiler"""
 
 class DefaultDynamicLinkerFilter:
     """Remove rpaths to directories that are default search paths of the dynamic linker."""
@@ -301,7 +372,7 @@ def dynamic_linker_filter_for(node: spack.spec.Spec) -> Optional[DefaultDynamicL
     compiler = compiler_spec(node)
     if compiler is None:
         return None
-    detector = CompilerPropertyDetector(compiler)
+    detector = CompilerDynamicLinkerDetector(compiler)
     dynamic_linker = detector.default_dynamic_linker()
     if dynamic_linker is None:
         return None
@@ -351,11 +422,11 @@ class CompilerCacheEntry:
 class CompilerCache:
     """Base class for compiler output cache. Default implementation does not cache anything."""
 
-    def value(self, compiler: spack.spec.Spec) -> Dict[str, Optional[str]]:
-        return {"c_compiler_output": CompilerPropertyDetector(compiler)._compile_dummy_c_source()}
+    def value(self, compiler: spack.spec.Spec, *args, **kwargs) -> Dict[str, Optional[str]]:
+        return {"c_compiler_output": CompilerExecutor(compiler)._compile_dummy_c_source(*args, **kwargs)}
 
-    def get(self, compiler: spack.spec.Spec) -> CompilerCacheEntry:
-        return CompilerCacheEntry.from_dict(self.value(compiler))
+    def get(self, compiler: spack.spec.Spec, *args, **kwargs) -> CompilerCacheEntry:
+        return CompilerCacheEntry.from_dict(self.value(compiler, *args, **kwargs))
 
 
 class FileCompilerCache(CompilerCache):
@@ -379,7 +450,7 @@ class FileCompilerCache(CompilerCache):
             pass
         return None
 
-    def get(self, compiler: spack.spec.Spec) -> CompilerCacheEntry:
+    def get(self, compiler: spack.spec.Spec, *args, **kwargs) -> CompilerCacheEntry:
         # Cache hit
         try:
             with self.cache.read_transaction(self.name) as f:
@@ -408,7 +479,7 @@ class FileCompilerCache(CompilerCache):
 
             # Finally compute the cache entry
             if entry is None:
-                self._data[key] = self.value(compiler)
+                self._data[key] = self.value(compiler, *args, **kwargs)
                 entry = CompilerCacheEntry.from_dict(self._data[key])
 
             new.write(json.dumps(self._data, separators=(",", ":")))

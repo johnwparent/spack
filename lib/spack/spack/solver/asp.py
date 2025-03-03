@@ -323,7 +323,7 @@ def using_libc_compatibility() -> bool:
 
 
 def c_compiler_runs(compiler) -> bool:
-    return CompilerPropertyDetector(compiler).compiler_verbose_output() is not None
+    return compiler.compiler_verbose_output is not None
 
 
 def extend_flag_list(flag_list, new_flags):
