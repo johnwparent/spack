@@ -199,6 +199,10 @@ execute() {
         echo "[$mode] "$full_command_list >> "$output_log"
         unset IFS
     fi
+    #
+    # Always dump command line for CPS production
+    #
+    echo "[$mode] "$full_command_list >> "$SPACK_CPS_COMPILE_LOG_DIR/spack-cc.log"
 
     # Execute the full command, preserving spaces with IFS set
     # to the alarm bell separator.

@@ -246,7 +246,7 @@ class Hdf5(CMakePackage):
 
         :return: list of matching libraries
         """
-        query_parameters = self.spec.last_query.extra_parameters
+        # query_parameters = self.spec.last_query.extra_parameters
 
         shared = "+shared" in self.spec
 
@@ -301,7 +301,7 @@ class Hdf5(CMakePackage):
         }
 
         # Turn the query into the appropriate key
-        key = tuple(sorted(query_parameters))
+        key = tuple(("cxx", "hl"))
         libraries = query2libraries[key]
 
         return find_libraries(libraries, root=self.prefix, shared=shared, recursive=True)

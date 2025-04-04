@@ -60,6 +60,7 @@ import spack.repo
 import spack.report
 import spack.rewiring
 import spack.store
+import spack.util.cps
 import spack.util.path
 import spack.util.timer as timer
 from spack.llnl.string import ordinal
@@ -642,6 +643,10 @@ def archive_install_logs(pkg: "spack.package_base.PackageBase", phase_log_dir: s
     pkg.archive_install_test_log()
 
 
+def install_cps(spec: "spack.spec.Spec") -> None:
+    spack.util.cps.spec_to_cps_to_disc(spec)
+
+
 def log(pkg: "spack.package_base.PackageBase") -> None:
     """
     Copy provenance into the install directory on success
@@ -664,9 +669,15 @@ def log(pkg: "spack.package_base.PackageBase") -> None:
     # Archive the environment modifications for the build.
     fs.install(pkg.env_mods_path, pkg.install_env_path)
 
+    # Archive the compile log
+    if os.path.exists(pkg.compile_log_path):
+        fs.install(pkg.compile_log_path, pkg.install_compile_log_path)
+
     if os.path.exists(pkg.configure_args_path):
         # Archive the args used for the build
         fs.install(pkg.configure_args_path, pkg.install_configure_args_path)
+
+    install_cps(pkg.spec)
 
     # Finally, archive files that are specific to each package
     with fs.working_dir(pkg.stage.path):
