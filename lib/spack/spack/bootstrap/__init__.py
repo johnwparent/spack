@@ -9,6 +9,8 @@ from .core import (
     ensure_clingo_importable_or_raise,
     ensure_core_dependencies,
     ensure_gpg_in_path_or_raise,
+    ensure_msvc_compiler_wrappers_or_raise,
+    ensure_msvc_relocate_or_raise,
     ensure_patchelf_in_path_or_raise,
 )
 from .environment import BootstrapEnvironment, ensure_environment_dependencies
@@ -21,6 +23,8 @@ __all__ = [
     "ensure_gpg_in_path_or_raise",
     "ensure_clingo_importable_or_raise",
     "ensure_patchelf_in_path_or_raise",
+    "ensure_msvc_compiler_wrappers_or_raise",
+    "ensure_msvc_relocate_or_raise",
     "all_core_root_specs",
     "ensure_environment_dependencies",
     "BootstrapEnvironment",

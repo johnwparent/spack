@@ -789,7 +789,7 @@ def setup_package(pkg, dirty, context: Context = Context.BUILD):
     for x in env_by_name["SPACK_COMPILER_WRAPPER_PATH"]:
         assert isinstance(
             x, PrependPath
-        ), "unexpected setting used for SPACK_COMPILER_WRAPPER_PATH"
+        ), f"unexpected setting {type(x)} used for SPACK_COMPILER_WRAPPER_PATH"
         env_mods.prepend_path("PATH", x.value)
 
     # Check whether we want to force RPATH or RUNPATH
