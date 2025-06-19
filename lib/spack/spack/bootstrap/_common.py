@@ -213,7 +213,7 @@ def _executables_in_store(
             # get all directories under prefix
             searchable_paths = [str(x) for x in prefix.glob("**")]
             binary = spack.util.executable.which_string(*executables, path=searchable_paths)
-            if (binary):
+            if binary:
                 bin_dir = os.path.dirname(binary)
                 spack.util.environment.path_put_first("PATH", [bin_dir])
                 if query_info is not None:

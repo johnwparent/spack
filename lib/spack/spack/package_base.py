@@ -50,8 +50,8 @@ import spack.url
 import spack.util.archive
 import spack.util.environment
 import spack.util.executable
-import spack.util.git
 import spack.util.filesystem as ssys
+import spack.util.git
 import spack.util.naming
 import spack.util.path
 import spack.util.web
