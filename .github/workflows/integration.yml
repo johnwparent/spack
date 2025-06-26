@@ -19,7 +19,6 @@ jobs:
       install_jobs: ${{ steps.scan-tests.integration_tests }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        if: ${{ github.event_name == 'push' || github.event_name == 'merge_group' }}
         with:
           fetch-depth: 0
       # - name: "Add Integration test repo"
