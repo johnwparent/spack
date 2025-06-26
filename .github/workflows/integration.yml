@@ -29,6 +29,7 @@ jobs:
       - name: "List repo packages"
         id: scan-tests
         run: |
+          . share/spack/setup-env.sh
           packages_list="$(spack list | tr '\n' ',')"
           echo "packages=${packages_list}" >> "$GITHUB_OUTPUT" 
 
