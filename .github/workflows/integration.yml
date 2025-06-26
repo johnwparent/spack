@@ -16,7 +16,7 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     outputs:
-      install_jobs: ${{ steps.scan-tests.integration_tests }}
+      packages: ${{ steps.scan-tests.integration_tests }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -46,4 +46,4 @@ jobs:
       #     spack install ${{ matrix.package }}
       - name: "matrix check"
         run: |
-          echo '${{ needs.scan.outputs.install_jobs }}'
+          echo '${{ needs.scan.outputs.packages }}'
