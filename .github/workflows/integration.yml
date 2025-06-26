@@ -16,7 +16,7 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     outputs:
-      packages: ${{ steps.scan-tests.integration_tests }}
+      packages: ${{ steps.scan.outputs.packages }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -26,10 +26,11 @@ jobs:
       #     . share/spack/setup-env.sh
       #     spack config --scope user add repos:builtin:git:'https://github.com/johnwparent/spack-integration-test-repo.git'
       - name: "List repo packages"
-        id: scan-tests
+        id: scan
         run: |
           . share/spack/setup-env.sh
           packages_list="$(spack list | tr '\n' ',')"
+          echo ${packages_list}
           echo "packages=${packages_list}" >> "$GITHUB_OUTPUT" 
 
   run:
@@ -46,4 +47,4 @@ jobs:
       #     spack install ${{ matrix.package }}
       - name: "matrix check"
         run: |
-          echo '${{ needs.scan.outputs.packages }}'
+          echo '${{ toJSON(needs.scan.outputs) }}'
