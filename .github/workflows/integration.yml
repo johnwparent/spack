@@ -29,8 +29,8 @@ jobs:
         id: scan
         run: |
           . share/spack/setup-env.sh
-          packages_list="$(spack list | tr '\n' ',')"
-          echo "packages=[${packages_list}]" >> "$GITHUB_OUTPUT" 
+          packages_list="$(spack list | python3 -c "import sys; print([f'"{x}"' for x in sys.stdin.read().split('\n')])")"
+          echo "packages=${packages_list}" >> "$GITHUB_OUTPUT" 
 
   run:
     needs: [scan]
