@@ -33,7 +33,7 @@ jobs:
           echo "packages=${packages_list}" >> "$GITHUB_OUTPUT" 
 
   run:
-    needs: scan
+    needs: [scan]
     # runs-on: ${{ matrix.os }}
     runs-on: ubuntu-latest
     # strategy:
@@ -46,4 +46,4 @@ jobs:
       #     spack install ${{ matrix.package }}
       - name: "matrix check"
         run: |
-          echo ${{ needs.scan.outputs.install_jobs }}
+          echo '${{ needs.scan.outputs.install_jobs }}'
