@@ -35,14 +35,14 @@ jobs:
   run:
     needs: scan
     runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-13, macos-14, windows-latest]
-        package: ${{ needs.scan.outputs.install_jobs }} # list of spack intergration test packages to run
+    # strategy:
+    #   matrix:
+    #     os: [ubuntu-latest, macos-13, macos-14, windows-latest]
+    #     package: [ ${{ needs.scan.outputs.install_jobs }}, "a" ] # list of spack intergration test packages to run
     steps:
       # - name: "Spack install"
       #   run: |
       #     spack install ${{ matrix.package }}
       - name: "matrix check"
         run: |
-          echo ${{ matrix.package }}
+          echo ${{ needs.scan.outputs.install_jobs }}
