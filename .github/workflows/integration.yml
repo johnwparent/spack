@@ -30,7 +30,6 @@ jobs:
         run: |
           . share/spack/setup-env.sh
           packages_list="$(spack list | tr '\n' ',')"
-          echo ${packages_list}
           echo "packages=${packages_list}" >> "$GITHUB_OUTPUT" 
 
   run:
@@ -47,4 +46,4 @@ jobs:
       #     spack install ${{ matrix.package }}
       - name: "matrix check"
         run: |
-          echo '${{ toJSON(needs.scan.outputs) }}'
+          echo '${{ needs.scan.outputs }}'
