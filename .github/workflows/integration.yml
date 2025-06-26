@@ -30,7 +30,7 @@ jobs:
         run: |
           . share/spack/setup-env.sh
           packages_list="$(spack list | tr '\n' ',')"
-          echo "packages=${packages_list}" >> "$GITHUB_OUTPUT" 
+          echo "packages=[${packages_list}]" >> "$GITHUB_OUTPUT" 
 
   run:
     needs: [scan]
@@ -38,7 +38,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-13, macos-14, windows-latest]
-        include: ${{ fromJSON(needs.scan.outputs) }} # list of spack intergration test packages to run
+        include: ${{ fromJSON(needs.scan.outputs.packages) }} # list of spack intergration test packages to run
     steps:
       # - name: "Spack install"
       #   run: |
