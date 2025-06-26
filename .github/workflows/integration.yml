@@ -46,4 +46,4 @@ jobs:
       #     spack install ${{ matrix.package }}
       - name: "matrix check"
         run: |
-          echo '${{ needs.scan.outputs }}'
+          echo '${{ needs.scan.outputs.packages }}'
