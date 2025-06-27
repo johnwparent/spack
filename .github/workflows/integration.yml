@@ -29,7 +29,7 @@ jobs:
         id: scan
         run: |
           . share/spack/setup-env.sh
-          packages_list="$(spack list --repo smoketest | python3 -c "import sys; print([f'"{x}"' for x in sys.stdin.read().split('\n')])")"
+          packages_list="$(spack list --repo smoketest | python3 -c "import sys; print([f'"{x}"' for x in sys.stdin.read().split('\n') if x])")"
           echo "packages=${packages_list}" >> "$GITHUB_OUTPUT" 
 
   run:
@@ -39,10 +39,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-13, macos-14, windows-latest]
         package: ${{ fromJSON(needs.scan.outputs.packages) }} # list of spack intergration test packages to run
+      fail-fast: true
     steps:
-      # - name: "Spack install"
-      #   run: |
-      #     spack install ${{ matrix.package }}
-      - name: "matrix check"
+      - name: "Spack install"
         run: |
-          echo '${{ matrix.package }}'
+          spack install ${{ matrix.package }}
