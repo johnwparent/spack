@@ -21,15 +21,15 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
-      # - name: "Add Integration test repo"
-      #   run: |
-      #     . share/spack/setup-env.sh
-      #     spack config --scope user add repos:builtin:git:'https://github.com/johnwparent/spack-integration-test-repo.git'
+      - name: "Add Integration test repo"
+        run: |
+          . share/spack/setup-env.sh
+          spack repo add https://github.com/johnwparent/test-spack-smoke-repo.git
       - name: "List repo packages"
         id: scan
         run: |
           . share/spack/setup-env.sh
-          packages_list="$(spack list | python3 -c "import sys; print([f'"{x}"' for x in sys.stdin.read().split('\n')])")"
+          packages_list="$(spack list --repo smoketest | python3 -c "import sys; print([f'"{x}"' for x in sys.stdin.read().split('\n')])")"
           echo "packages=${packages_list}" >> "$GITHUB_OUTPUT" 
 
   run:
