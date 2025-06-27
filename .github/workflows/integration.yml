@@ -41,6 +41,9 @@ jobs:
         package: ${{ fromJSON(needs.scan.outputs.packages) }} # list of spack intergration test packages to run
       fail-fast: true
     steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
       - name: "Add Integration test repo"
         run: |
           . share/spack/setup-env.sh
@@ -48,4 +51,6 @@ jobs:
       - name: "Spack install"
         run: |
           . share/spack/setup-env.sh
+          spack compiler find
+          spack external find cmake ninja
           spack install ${{ matrix.package }}
