@@ -41,6 +41,11 @@ jobs:
         package: ${{ fromJSON(needs.scan.outputs.packages) }} # list of spack intergration test packages to run
       fail-fast: true
     steps:
+      - name: "Add Integration test repo"
+        run: |
+          . share/spack/setup-env.sh
+          spack repo add https://github.com/johnwparent/test-spack-smoke-repo.git
       - name: "Spack install"
         run: |
+          . share/spack/setup-env.sh
           spack install ${{ matrix.package }}
