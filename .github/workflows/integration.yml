@@ -54,7 +54,7 @@ jobs:
           . share/spack/setup-env.sh
           spack compiler find
           spack external find cmake ninja
-          spack install ${{ matrix.package }}
+          spack install --test root ${{ matrix.package }}
   run-win:
     defaults:
       run:
@@ -77,4 +77,4 @@ jobs:
         run: |
           spack compiler find
           spack external find cmake ninja
-          spack install ${{ matrix.package }}
+          spack install --test root ${{ matrix.package }}
