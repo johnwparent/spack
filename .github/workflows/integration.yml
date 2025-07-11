@@ -49,11 +49,27 @@ jobs:
           . share/spack/setup-env.sh
           spack repo add https://github.com/johnwparent/test-spack-smoke-repo.git
       - name: "Spack install"
+        id: install
         run: |
           . share/spack/setup-env.sh
           spack compiler find
           spack external find cmake ninja
-          spack install --test root ${{ matrix.package }}
+          spack -dv install --test root ${{ matrix.package }}
+      - name: "Determine failure stage"
+        if: always() && (steps.install.outcome == 'failure')
+        run: |
+          . share/spack/setup-env.sh
+          echo "FAILURE_STAGE=$(spack location -s ${{ matrix.package }})" >> $GITHUB_ENV
+
+      - name: "Collect failure artifacts"
+        if: always() && (steps.install.outcome == 'failure')
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ matrix.package }}-stage"
+          path: $FAILURE_STAGE
+      
+
+      
   run-win:
     defaults:
       run:
@@ -73,7 +89,20 @@ jobs:
         run: |
           spack repo add https://github.com/johnwparent/test-spack-smoke-repo.git
       - name: "Spack install"
+        id: install
         run: |
           spack compiler find
           spack external find cmake ninja
-          spack install --test root ${{ matrix.package }}
+          spack -dv install --test root ${{ matrix.package }}
+      - name: "Determine failure stage"
+        if: always() && (steps.install.outcome == 'failure')
+        run: |
+          . share/spack/setup-env.sh
+          echo "FAILURE_STAGE=$(spack location -s ${{ matrix.package }})" >> $GITHUB_ENV
+
+      - name: "Collect failure artifacts"
+        if: always() && (steps.install.outcome == 'failure')
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ matrix.package }}-stage"
+          path: $FAILURE_STAGE
