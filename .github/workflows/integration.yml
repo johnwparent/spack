@@ -93,7 +93,7 @@ jobs:
         run: |
           spack compiler find
           spack external find cmake ninja
-          spack -dv install --test root ${{ matrix.package }}
+          spack -dv install  ${{ matrix.package }}
       - name: "Determine failure stage"
         if: always() && (steps.install.outcome == 'failure')
         run: |
