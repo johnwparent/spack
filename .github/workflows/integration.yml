@@ -93,11 +93,10 @@ jobs:
         run: |
           spack compiler find
           spack external find cmake ninja
-          spack -dv install  ${{ matrix.package }}
+          spack -dv install --test root ${{ matrix.package }}
       - name: "Determine failure stage"
         if: always() && (steps.install.outcome == 'failure')
         run: |
-          . share/spack/setup-env.sh
           echo "FAILURE_STAGE=$(spack location -s ${{ matrix.package }})" >> $GITHUB_ENV
 
       - name: "Collect failure artifacts"
