@@ -49,7 +49,6 @@ jobs:
           . share/spack/setup-env.sh
           spack repo add https://github.com/johnwparent/test-spack-smoke-repo.git
       - name: "Spack install"
-        if: matrix.os != 'windows-latest'
         run: |
           . share/spack/setup-env.sh
           spack compiler find
