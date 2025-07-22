@@ -11,6 +11,7 @@ import glob
 import os
 import re
 
+import spack.store
 from spack.llnl.util.filesystem import edit_in_place_through_temporary_file
 from spack.util.executable import Executable
 
@@ -89,6 +90,7 @@ def relocate_win_rpath(package):
             if not (entry.is_symlink() or entry.is_junction()) and entry.is_dir():
                 dirs_to_relocate.append(entry.path)
     ev.set_path("SPACK_RELOCATE_PATH", dirs_to_relocate)
+    ev.set("SPACK_INSTALL_PREFIX", spack.store.STORE.root)
     lib_map = {}
     for lib in glob.glob(os.path.join(package.spec.prefix, "**\\*.lib"), recursive=True):
         if verify_import_lib(lib, package=package):
