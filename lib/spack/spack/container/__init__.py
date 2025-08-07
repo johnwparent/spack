@@ -13,6 +13,7 @@ import spack.schema.env as env
 import spack.util.spack_yaml as syaml
 
 from .writers import recipe
+from .images import ImageDefaults
 
 __all__ = ["validate", "recipe"]
 
@@ -38,10 +39,10 @@ def validate(configuration_file):
     # Ensure we have a "container" attribute with sensible defaults set
     env_dict = config[ev.TOP_LEVEL_KEY]
     env_dict.setdefault(
-        "container", {"format": "docker", "images": {"os": "ubuntu:22.04", "spack": "develop"}}
+        "container", {"format": "docker", "images": {"os": ImageDefaults.OS, "spack": "develop"}}
     )
     env_dict["container"].setdefault("format", "docker")
-    env_dict["container"].setdefault("images", {"os": "ubuntu:22.04", "spack": "develop"})
+    env_dict["container"].setdefault("images", {"os": ImageDefaults.OS, "spack": "develop"})
 
     # Remove attributes that are not needed / allowed in the
     # container recipe

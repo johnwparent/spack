@@ -132,7 +132,8 @@
     },
     "windows:2022": {
       "bootstrap": {
-        "template": "container/windows_server_2022_lts.dockerfile"
+        "template": "container/windows_server_2022_lts.dockerfile",
+        "image": "mcr.microsoft.com/windows/server:ltsc2022"
       },
       "build": "johnwparent/windows-server21h2"
     }
