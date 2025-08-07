@@ -129,6 +129,12 @@
       },
       "build": "spack/ubuntu-focal",
       "os_package_manager": "apt"
+    },
+    "windows:2022": {
+      "bootstrap": {
+        "template": "container/windows_server_2022_lts.dockerfile"
+      },
+      "build": "johnwparent/windows-server21h2"
     }
   },
   "os_package_managers": {
