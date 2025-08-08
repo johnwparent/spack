@@ -340,6 +340,11 @@ class SingularityContext(PathContext):
     #: Name of the template used for Singularity definition files
     template_name = "container/singularity.def"
 
+    def __init__(self, *args, **kwargs):
+        super(SingularityContext, self).__init__(*args, **kwargs)
+        if "windows" in self.operating_system_key:
+            raise RuntimeError("Singularity does not support Windows, cannot generate container recipe")
+
     @property
     def singularity_config(self):
         return self.container_config.get("singularity", {})
