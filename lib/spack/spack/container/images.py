@@ -29,18 +29,6 @@ def data():
             _data = json.load(f)
     return _data
 
-class Meta(type):
-    def __getattribute__(cls, attr):
-        os = "windows" if sys.platform == "win32" else "nix"
-        return object.__getattribute__(cls, attr)[os]
-
-class ImageDefaults(metaclass=Meta):
-    OS = {
-            "windows": "windows:2022",
-            "nix": "ubuntu:22.04"
-        }
-
-
 
 def build_info(image, spack_version):
     """Returns the name of the build image and its tag.

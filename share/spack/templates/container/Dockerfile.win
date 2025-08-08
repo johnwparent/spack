@@ -1,0 +1,56 @@
+# escape=`
+{% if render_phase.bootstrap %}
+{{ bootstrap.recipe }}
+
+{% endif %}
+{% if render_phase.build %}
+# Build stage with Spack pre-installed and ready to be used
+FROM {{ build.image }} AS builder
+
+{% block build_stage %}
+
+# What we want to install and how we want to install it
+# is specified in a manifest file (spack.yaml)
+RUN mkdir {{ paths.environment }} -AND `
+{{ manifest }} > {{ paths.environment }}/spack.yaml
+
+# Install the software, remove unnecessary deps
+RUN cd {{ paths.environment }} -AND spack env activate . -AND spack install --fail-fast -AND spack gc -y
+
+# Modifications to the environment that are necessary to run
+RUN cd {{ paths.environment }} -AND `
+    spack env activate --pwsh -d . > activate.ps1
+
+{% endblock build_stage %}
+{% endif %}
+
+{% if render_phase.final %}
+# Bare OS image to run the installed executables
+FROM {{ run.image }}
+
+COPY --from=builder {{ paths.environment }} {{ paths.environment }}
+COPY --from=builder {{ paths.store }} {{ paths.store }}
+
+# paths.view is a symlink, so copy the parent to avoid dereferencing and duplicating it
+COPY --from=builder {{ paths.view_parent }} {{ paths.view_parent }}
+
+RUN { `
+      echo '.' {{ paths.environment }}/activate.ps1 `
+      && echo '"$args"'; `
+    } > /entrypoint.ps1 `
+-AND New-Item -ItemType SymbolicLink -Target {{ paths.view }} -Path {{ paths.former_view }}
+
+{% block final_stage %}
+
+{% if os_packages_final %}
+RUN {% if os_package_update %}{{ os_packages_final.update }} `
+ -AND {% endif %}{{ os_packages_final.install }} {{ os_packages_final.list | join | replace('\n', ' ') }} `
+ -AND {{ os_packages_final.clean }}
+{% endif %}
+{% endblock final_stage %}
+{% for label, value in labels.items() %}
+LABEL "{{ label }}"="{{ value }}"
+{% endfor %}
+ENTRYPOINT [ "/entrypoint.ps1" ]
+CMD [ "powershell.exe" ]
+{% endif %}

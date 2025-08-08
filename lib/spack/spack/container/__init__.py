@@ -13,7 +13,7 @@ import spack.schema.env as env
 import spack.util.spack_yaml as syaml
 
 from .writers import recipe
-from .images import ImageDefaults
+from .defaults import ImageDefaults
 
 __all__ = ["validate", "recipe"]
 
