@@ -31,7 +31,7 @@ class DefaultPaths:
     # possible prefixes wherever possible
     win_paths = {
         "environment": "C:\\s\\env",
-        "store": "C:\\s\\software",
+        "store": "C:\\s\\store",
         "view_parent": "C:\\v2",
         "view": "C:\\v2\\v",
         "former_view": "C:\\v"
@@ -45,3 +45,9 @@ class DefaultPaths:
             return DefaultPaths.win_paths[name]
         else:
             return DefaultPaths.nix_paths[name]
+        
+    def key(self):
+        return (key for key in DefaultPaths.win_paths.keys())
+
+    def __getitem__(self, key):
+        return getattr(self, key)

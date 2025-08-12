@@ -26,6 +26,10 @@ from .images import (
     os_package_manager_for,
 )
 
+from .defaults import (
+    DefaultPaths
+)
+
 #: Caches all the writers that are currently supported
 _writer_factory = {}
 
@@ -145,6 +149,8 @@ class PathContext(tengine.Context):
 
         # Operating system tag as written in the configuration file
         self.operating_system_key = self.container_config["images"].get("os")
+        # Os specific layout
+        self._default_paths = DefaultPaths(self.operating_system_key)
         # Get base images and verify the OS
         bootstrap, build, final = _stage_base_images(self.container_config["images"])
         self.bootstrap_image = bootstrap
@@ -180,11 +186,7 @@ class PathContext(tengine.Context):
         """Important paths in the image"""
         Paths = namedtuple("Paths", ["environment", "store", "view_parent", "view", "former_view"])
         return Paths(
-            environment="/opt/spack-environment",
-            store="/opt/software",
-            view_parent="/opt/views",
-            view="/opt/views/view",
-            former_view="/opt/view",  # /opt/view -> /opt/views/view for backward compatibility
+            **self._default_paths
         )
 
     @tengine.context_property
