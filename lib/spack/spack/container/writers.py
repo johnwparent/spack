@@ -6,6 +6,7 @@ convenience functions.
 """
 import copy
 import shlex
+import sys
 from collections import namedtuple
 from typing import Optional
 
@@ -27,9 +28,11 @@ from .images import (
 )
 
 from .defaults import (
-    DefaultPaths
+    ImageDefaults
 )
 
+
+IS_WINDOWS = sys.platform == "win32"
 #: Caches all the writers that are currently supported
 _writer_factory = {}
 
@@ -140,17 +143,15 @@ class PathContext(tengine.Context):
     directly via PATH.
     """
 
-    # Must be set by derived classes
-    template_name: Optional[str] = None
-
     def __init__(self, config, last_phase):
         self.config = config[ev.TOP_LEVEL_KEY]
         self.container_config = self.config["container"]
-
+        # Must be set by derived classes
+        self.template_name: Optional[str] = None
         # Operating system tag as written in the configuration file
         self.operating_system_key = self.container_config["images"].get("os")
         # Os specific layout
-        self._default_paths = DefaultPaths(self.operating_system_key)
+        self._defaults = ImageDefaults(self.operating_system_key)
         # Get base images and verify the OS
         bootstrap, build, final = _stage_base_images(self.container_config["images"])
         self.bootstrap_image = bootstrap
@@ -186,7 +187,7 @@ class PathContext(tengine.Context):
         """Important paths in the image"""
         Paths = namedtuple("Paths", ["environment", "store", "view_parent", "view", "former_view"])
         return Paths(
-            **self._default_paths
+            **self._defaults.Paths
         )
 
     @tengine.context_property
@@ -314,23 +315,29 @@ class PathContext(tengine.Context):
 class DockerContext(PathContext):
     """Context used to instantiate a Dockerfile"""
 
-    #: Name of the template used for Dockerfiles
-    template_name = "container/Dockerfile"
+    def __init__(self, *args, **kwargs):
+        super(DockerContext, self).__init__(*args, **kwargs)
+        #: Name of the template used for Dockerfiles
+        self.template_name = self._defaults.DockerTemplate
+
 
     @tengine.context_property
     def manifest(self):
         manifest_str = super().manifest
+        # different platforms have different line continuation
+        # syntax, establish that
+        line_continue = " " + self._defaults.MultiLineSep
         # Docker doesn't support HEREDOC, so we need to resort to
         # a horrible echo trick to have the manifest in the Dockerfile
         echoed_lines = []
         for idx, line in enumerate(manifest_str.split("\n")):
-            quoted_line = shlex.quote(line)
+            quoted_line = line if IS_WINDOWS else shlex.quote(line)
             if idx == 0:
-                echoed_lines.append("&&  (echo " + quoted_line + " \\")
+                echoed_lines.append("&&  (echo " + quoted_line + line_continue)
                 continue
-            echoed_lines.append("&&   echo " + quoted_line + " \\")
+            echoed_lines.append("&&   echo " + quoted_line + line_continue)
 
-        echoed_lines[-1] = echoed_lines[-1].replace(" \\", ")")
+        echoed_lines[-1] = echoed_lines[-1].replace(line_continue, ")")
 
         return "\n".join(echoed_lines)
 
@@ -339,11 +346,10 @@ class DockerContext(PathContext):
 class SingularityContext(PathContext):
     """Context used to instantiate a Singularity definition file"""
 
-    #: Name of the template used for Singularity definition files
-    template_name = "container/singularity.def"
-
     def __init__(self, *args, **kwargs):
         super(SingularityContext, self).__init__(*args, **kwargs)
+        #: Name of the template used for Singularity definition files
+        self.template_name = "container/singularity.def"
         if "windows" in self.operating_system_key:
             raise RuntimeError("Singularity does not support Windows, cannot generate container recipe")
 

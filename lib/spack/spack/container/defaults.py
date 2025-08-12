@@ -5,49 +5,40 @@
 
 import sys
 
-from typing import Any
 
 class Meta(type):
     def __getattribute__(cls, attr):
-        os = "windows" if sys.platform == "win32" else "nix"
-        return object.__getattribute__(cls, attr)[os]
+        os = "win" if sys.platform == "win32" else "nix"
+        return object.__getattribute__(cls, os + attr)
 
 class ImageDefaults(metaclass=Meta):
-    OS = {
-            "windows": "windows:2022",
-            "nix": "ubuntu:22.04"
-        }
+    """Stores information about default image attributes
+    for each supported image platform"""
 
-
-class DefaultPaths:
-    nix_paths = {
-        "environment": "/opt/spack-environment",
-        "store": "/opt/software",
-        "view_parent": "/opt/views",
-        "view": "/opt/views/view",
-        "former_view": "/opt/view"  # /opt/view -> /opt/views/view for backward compatibility
-    }
-    # Windows has very terse path limitations, use shortest
-    # possible prefixes wherever possible
-    win_paths = {
+    winOs = "windows:2022"
+    nixOs = "ubuntu:22.04"
+    winPaths = {
         "environment": "C:\\s\\env",
         "store": "C:\\s\\store",
         "view_parent": "C:\\v2",
         "view": "C:\\v2\\v",
         "former_view": "C:\\v"
     }
+    nixPaths = {
+        "environment": "/opt/spack-environment",
+        "store": "/opt/software",
+        "view_parent": "/opt/views",
+        "view": "/opt/views/view",
+        "former_view": "/opt/view"  # /opt/view -> /opt/views/view for backward compatibility
+    }
+    winMultiLineSep = "`"
+    nixMultiLineSep = "\\"
+    winDockerTemplate = "container/Dockerfile.win"
+    nixDockerTemplate = "container/Dockerfile.nix"
+
 
     def __init__(self, os):
-        self._os = os
+        self._os = "win" if "windows" in os else "nix"
 
-    def __getattribute__(self, name: str) -> Any:
-        if "windows" in self._os:
-            return DefaultPaths.win_paths[name]
-        else:
-            return DefaultPaths.nix_paths[name]
-        
-    def key(self):
-        return (key for key in DefaultPaths.win_paths.keys())
-
-    def __getitem__(self, key):
-        return getattr(self, key)
+    def __getattr__(self, name: str):
+        return self.__getattribute__(self._os + name)

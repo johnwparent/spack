@@ -39,10 +39,10 @@ def validate(configuration_file):
     # Ensure we have a "container" attribute with sensible defaults set
     env_dict = config[ev.TOP_LEVEL_KEY]
     env_dict.setdefault(
-        "container", {"format": "docker", "images": {"os": ImageDefaults.OS, "spack": "develop"}}
+        "container", {"format": "docker", "images": {"os": ImageDefaults.Os, "spack": "develop"}}
     )
     env_dict["container"].setdefault("format", "docker")
-    env_dict["container"].setdefault("images", {"os": ImageDefaults.OS, "spack": "develop"})
+    env_dict["container"].setdefault("images", {"os": ImageDefaults.Os, "spack": "develop"})
 
     # Remove attributes that are not needed / allowed in the
     # container recipe
