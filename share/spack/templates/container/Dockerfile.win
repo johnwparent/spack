@@ -22,7 +22,8 @@ RUN cd {{ paths.environment }} -AND spack env activate . -AND spack install --fa
 
 # Modifications to the environment that are necessary to run
 RUN cd {{ paths.environment }} -AND `
-    spack env activate --pwsh -d . > activate.ps1
+    . C:\spack\share\spack\setup-env.ps1 > activate.ps1 `
+   -AND spack env activate --pwsh -d . >> activate.ps1
 
 {% endblock build_stage %}
 {% endif %}
@@ -39,6 +40,8 @@ COPY --from=builder {{ paths.view_parent }} {{ paths.view_parent }}
 
 SHELL ["cmd", "/S", "/C"]
 
+WORKDIR "C:\"
+
 RUN ( `
       echo . {{ paths.environment }}/activate.ps1 `
       && echo $args; `
@@ -48,6 +51,7 @@ RUN ( `
 {% for label, value in labels.items() %}
 LABEL "{{ label }}"="{{ value }}"
 {% endfor %}
-ENTRYPOINT [ "/entrypoint.ps1" ]
-CMD [ "powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'Continue'; $verbosePreference='Continue';" ]
+ENTRYPOINT [ "powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'Continue'; $verbosePreference='Continue';" ]
+CMD [ "C:\entrypoint.ps1" ]
+
 {% endif %}

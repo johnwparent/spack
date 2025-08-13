@@ -135,9 +135,9 @@
         "template": "container/windows_server_2022_lts.dockerfile",
         "image": "mcr.microsoft.com/windows/server:ltsc2022"
       },
-      "build": "johnwparent/windows-server21h2",
+      "build": "johnwparent/windows-server21h2-spack",
       "final": {
-        "image": "mcr.microsoft.com/windows/server:ltsc2022"
+        "image": "johnwparent/windows-server21h2"
       }
     }
   },
