@@ -15,8 +15,11 @@ class ImageDefaults(metaclass=Meta):
     """Stores information about default image attributes
     for each supported image platform"""
 
+    # image registry keys
     winOs = "windows:2022"
     nixOs = "ubuntu:22.04"
+
+    # image projection defaults
     winPaths = {
         "environment": "C:\\s\\env",
         "store": "C:\\s\\store",
@@ -31,8 +34,12 @@ class ImageDefaults(metaclass=Meta):
         "view": "/opt/views/view",
         "former_view": "/opt/view"  # /opt/view -> /opt/views/view for backward compatibility
     }
+
+    # Dockerfile multiline separators
     winMultiLineSep = "`"
     nixMultiLineSep = "\\"
+
+    # Dockerfile template defaults
     winDockerTemplate = "container/Dockerfile.win"
     nixDockerTemplate = "container/Dockerfile.nix"
 
@@ -41,4 +48,7 @@ class ImageDefaults(metaclass=Meta):
         self._os = "win" if "windows" in os else "nix"
 
     def __getattr__(self, name: str):
-        return self.__getattribute__(self._os + name)
+        try:
+            return self.__getattribute__(self._os + name)
+        except AttributeError as e:
+            raise AttributeError(f"ImageDefaults has no attribute {name}") from e
