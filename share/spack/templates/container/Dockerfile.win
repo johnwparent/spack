@@ -9,21 +9,19 @@ FROM {{ build.image }} AS builder
 
 {% block build_stage %}
 
-SHELL ["cmd", "/S", "/C"]
+SHELL ["C:\spack\bin\spack_cmd.bat"]
 # What we want to install and how we want to install it
 # is specified in a manifest file (spack.yaml)
 RUN mkdir {{ paths.environment }}`
 {{ manifest }} > {{ paths.environment }}\spack.yaml
 
-SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'Continue'; $verbosePreference='Continue';"]
-
 # Install the software, remove unnecessary deps
-RUN cd {{ paths.environment }} -AND spack env activate . -AND spack install --fail-fast -AND spack gc -y
+RUN cd {{ paths.environment }} && spack env activate . && spack install --fail-fast && spack gc -y
 
 # Modifications to the environment that are necessary to run
-RUN cd {{ paths.environment }} -AND `
+RUN cd {{ paths.environment }} && `
     . C:\spack\share\spack\setup-env.ps1 > activate.ps1 `
-   -AND spack env activate --pwsh -d . >> activate.ps1
+   && spack env activate --pwsh -d . >> activate.ps1
 
 {% endblock build_stage %}
 {% endif %}

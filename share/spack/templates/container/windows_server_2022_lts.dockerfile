@@ -101,3 +101,6 @@ RUN spack bootstrap now `
     && spack bootstrap status --optional `
     && spack spec hdf5+mpi
 
+
+ENTRYPOINT ["C:\spack\bin\spack_cmd.bat"]
+
