@@ -110,11 +110,11 @@ class BootstrapEnvironment(spack.environment.Environment):
         template = env.get_template("bootstrap/spack.yaml")
         context = {
             "python_spec": spec_for_current_python(),
-            "python_prefix": sys.exec_prefix,
+            "python_prefix": pathlib.PurePath(sys.exec_prefix).as_posix(),
             "architecture": spack.vendor.archspec.cpu.host().family,
-            "environment_path": self.environment_root(),
+            "environment_path": pathlib.PurePath(self.environment_root()).as_posix(),
             "environment_specs": self.spack_dev_requirements(),
-            "store_path": store_path(),
+            "store_path": pathlib.PurePath(store_path()).as_posix(),
         }
         self.environment_root().mkdir(parents=True, exist_ok=True)
         self.spack_yaml().write_text(template.render(context), encoding="utf-8")
