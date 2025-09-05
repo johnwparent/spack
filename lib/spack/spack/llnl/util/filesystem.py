@@ -382,7 +382,9 @@ def filter_file(
 
         except BaseException:
             # restore the original file
-            os.rename(temp_path, path)
+            # use per platform rename for proper 
+            # rename handling
+            rename(temp_path, path)
             errored = True
             raise
 
@@ -1064,6 +1066,8 @@ def replace_directory_transaction(directory_name):
     backup_dir = os.path.join(tmpdir, "backup")
     os.rename(directory_name, backup_dir)
     tty.debug("Directory moved [src={0}, dest={1}]".format(directory_name, backup_dir))
+
+    ##### OVERWRITE BUG HERE
 
     try:
         yield backup_dir
