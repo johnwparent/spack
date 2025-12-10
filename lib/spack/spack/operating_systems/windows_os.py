@@ -7,6 +7,7 @@ import os
 import pathlib
 import platform
 import subprocess
+from typing import List
 
 from spack.error import SpackError
 from spack.llnl.util import tty
@@ -104,7 +105,8 @@ class WindowsOs(OperatingSystem):
                 msft = winreg.WindowsRegistryView(
                     "SOFTWARE\\WOW6432Node\\Microsoft", winreg.HKEY.HKEY_LOCAL_MACHINE
                 )
-                return msft.find_subkeys(r"VisualStudio_.*", recursive=False)
+                # we want to cache all error'd subkeys here, and optionally retry _only_ those
+                return msft.find_subkeys(r"VisualStudio_.*", recursive=False, retry=True)
             except OSError as e:
                 # OSErrors propagated into caller by Spack's registry module are expected
                 # and indicate a known issue with the registry query
@@ -122,17 +124,10 @@ class WindowsOs(OperatingSystem):
                 # or are permanent (specific types of permission issues)
                 # but the registry raises the same exception for all types of
                 # atypical errors
-                if retry:
-                    winreg_report_error(e)
+                winreg_report_error(e)
                 return []
 
         vs_entries = try_query_registry()
-        if not vs_entries:
-            # Occasional spurious race conditions can arise when reading the MS reg
-            # typically these race conditions resolve immediately and we can safely
-            # retry the reg query without waiting
-            # Note: Winreg does not support locking
-            vs_entries = try_query_registry(retry=True)
 
         vs_paths = []
 

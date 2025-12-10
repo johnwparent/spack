@@ -359,7 +359,7 @@ class WindowsRegistryView:
             WindowsRegistryView.KeyMatchConditions.regex_matcher(subkey_name), recursive=recursive
         )
 
-    def find_subkeys(self, subkey_name: str, recursive: bool = True):
+    def find_subkeys(self, subkey_name: str, recursive: bool = True, retry: bool = False):
         """Exactly the same as find_subkey, except this function tries to match
         a regex to multiple keys
 
