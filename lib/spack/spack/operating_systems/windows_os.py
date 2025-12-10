@@ -8,6 +8,8 @@ import pathlib
 import platform
 import subprocess
 
+import spack.config
+
 from spack.error import SpackError
 from spack.llnl.util import tty
 from spack.util import windows_registry as winreg
@@ -126,29 +128,34 @@ class WindowsOs(OperatingSystem):
                     winreg_report_error(e)
                 return []
 
-        vs_entries = try_query_registry()
-        if not vs_entries:
-            # Occasional spurious race conditions can arise when reading the MS reg
-            # typically these race conditions resolve immediately and we can safely
-            # retry the reg query without waiting
-            # Note: Winreg does not support locking
-            vs_entries = try_query_registry(retry=True)
+        def acquire_vs_entries():
+            if not spack.config.get("config:win_reg:enable", False):
+                return []
+            vs_entries = try_query_registry()
+            if not vs_entries:
+                # Occasional spurious race conditions can arise when reading the MS reg
+                # typically these race conditions resolve immediately and we can safely
+                # retry the reg query without waiting
+                # Note: Winreg does not support locking
+                vs_entries = try_query_registry(retry=True)
+            if not vs_entries:
+                return []
+            vs_paths = []
 
-        vs_paths = []
+            def clean_vs_path(path):
+                path = path.split(",")[0].lstrip("@")
+                return str((pathlib.Path(path).parent / "..\\..").resolve())
 
-        def clean_vs_path(path):
-            path = path.split(",")[0].lstrip("@")
-            return str((pathlib.Path(path).parent / "..\\..").resolve())
+            for entry in vs_entries:
+                try:
+                    val = entry.get_subkey("Capabilities").get_value("ApplicationDescription").value
+                    vs_paths.append(clean_vs_path(val))
+                except FileNotFoundError as e:
+                    if hasattr(e, "winerror") and e.winerror == 2:
+                        pass
+                    else:
+                        raise
+            return vs_paths
 
-        for entry in vs_entries:
-            try:
-                val = entry.get_subkey("Capabilities").get_value("ApplicationDescription").value
-                vs_paths.append(clean_vs_path(val))
-            except FileNotFoundError as e:
-                if hasattr(e, "winerror") and e.winerror == 2:
-                    pass
-                else:
-                    raise
-
-        _compiler_search_paths.extend(vs_paths)
+        _compiler_search_paths.extend(acquire_vs_entries())
         return _compiler_search_paths

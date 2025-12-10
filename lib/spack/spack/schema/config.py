@@ -50,6 +50,12 @@ properties: Dict[str, Any] = {
             "build_stage": {
                 "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]
             },
+            "win_reg" : {
+                "type": "object",
+                "properties": {
+                    "enable": {"type": "boolean"}
+                }
+            },
             "stage_name": {"type": "string"},
             "develop_stage_link": {"type": "string"},
             "test_stage": {"type": "string"},
