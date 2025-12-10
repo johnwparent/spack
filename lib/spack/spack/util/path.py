@@ -19,6 +19,7 @@ from typing import Optional
 
 import spack.llnl.util.tty as tty
 import spack.util.spack_yaml as syaml
+import spack.util.windows_registry as winreg
 from spack.llnl.util.lang import memoized
 
 __all__ = ["substitute_config_variables", "substitute_path_variables", "canonicalize_path"]
@@ -191,9 +192,28 @@ def substitute_config_variables(path):
     return re.sub(r"(\$\w+\b|\$\{\w+\})", repl, path)
 
 
+def substitute_reg_variables(path: str) -> str:
+    """Substitue reg lookup strings and prebaked lookups"""
+    _replacements = {
+        "sdk_root" : "[HKEY]"+":"+"SOFTWARE\\WOW6432Node\\Microsoft", winreg.HKEY.HKEY_LOCAL_MACHINE
+    }
+
+    # Look up replacements
+    def repl(match):
+        m = match.group(0)
+        key = m.strip("${}").lower()
+        repl = _replacements.get(key, lambda: m)()
+        return m if repl is NOMATCH else str(repl)
+
+    # Replace $var or ${var}.
+    return re.sub(r"(\$\w+\b|\$\{\w+\})", repl, path)
+    return path
+
+
 def substitute_path_variables(path):
     """Substitute config vars, expand environment vars, expand user home."""
     path = substitute_config_variables(path)
+    path = substitute_reg_variables(path)
     path = os.path.expandvars(path)
     path = os.path.expanduser(path)
     return path
