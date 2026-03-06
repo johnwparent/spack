@@ -54,6 +54,11 @@ class SpackCps:
             if libc:
                 cps_platform["c_runtime_version"] = libc.version
                 cps_platform["cpp_runtime_version"] = libc.version
+
+                vendor_mappings =  {
+                    "glibc" : "gnu"
+                }
+
                 if "glibc" in str(libc):
                     cps_platform["c_runtime_vendor"] = "gnu"
                     cps_platform["cpp_runtime_vendor"] = "gnu"
@@ -81,6 +86,9 @@ class SpackCps:
                 cps_platform["c_runtime_version"] = spec["msvc"].package.msvc_version
                 cps_platform["cpp_runtime_version"] = spec["msvc"].package.msvc_version
         return cps_platform
+
+    def _process_runtime_vendor(self):
+
 
     def get_compiler_args(self):
         args = []
