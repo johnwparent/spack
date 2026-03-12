@@ -46,49 +46,43 @@ class SpackCps:
         cps_platform = {}
         cps_platform["isa"] = target.family.name
         cps_platform["kernel"] = platform.uname().system
-        if not sys.platform == "win32":
+        vendor = None
+        version = None
+
+        if sys.platform == "win32":
+            if "msvc" in spec:
+                vendor = "microsoft"
+                version = spec["msvc"].package.msvc_version
+                cps_platform["clr_vendor"] = "microsoft"
+        else:
+            libc = None
             try:
                 libc = spack.compilers.libraries.CompilerPropertyDetector(spec.compiler.spec).default_libc()
-            except:
-                libc = None
+            except Exception:
+                pass
+
             if libc:
-                cps_platform["c_runtime_version"] = libc.version
-                cps_platform["cpp_runtime_version"] = libc.version
-
-                vendor_mappings =  {
-                    "glibc" : "gnu"
+                version = libc.version
+                libc_str = str(libc)
+                # Map to CPS vendor
+                vendor_map = {
+                    "glibc": "gnu", 
+                    "musl": "musl", 
+                    "llvm": "llvm", 
+                    "libstdc": "bsd" # catches both 'libstdc' and 'libstdc++'
                 }
-
-                if "glibc" in str(libc):
-                    cps_platform["c_runtime_vendor"] = "gnu"
-                    cps_platform["cpp_runtime_vendor"] = "gnu"
-                elif "musl" in str(libc):
-                    cps_platform["c_runtime_vendor"] = "musl"
-                    cps_platform["cpp_runtime_vendor"] = "musl"
-                elif "llvm" in str(libc):
-                    cps_platform["c_runtime_vendor"] = "llvm"
-                    cps_platform["cpp_runtime_vendor"] = "llvm"
-                elif "libstdc" in str(libc) or "libstdc++" in str(libc):
-                    cps_platform["c_runtime_vendor"] = "bsd"
-                    cps_platform["cpp_runtime_vendor"] = "bsd"
+                vendor = next((v for k, v in vendor_map.items() if k in libc_str), None)
             else:
                 if "gcc" in spec:
-                    cps_platform["c_runtime_vendor"] = "gnu"
-                    cps_platform["cpp_runtime_vendor"] = "gnu"
+                    vendor = "gnu"
                 elif "clang" in spec:
-                    cps_platform["c_runtime_vendor"] = "llvm"
-                    cps_platform["cpp_runtime_vendor"] = "llvm"
-        else:
-            if "msvc" in spec:
-                cps_platform["c_runtime_vendor"] = "microsoft"
-                cps_platform["cpp_runtime_vendor"] = "microsoft"
-                cps_platform["clr_vendor"] = "microsoft"
-                cps_platform["c_runtime_version"] = spec["msvc"].package.msvc_version
-                cps_platform["cpp_runtime_version"] = spec["msvc"].package.msvc_version
+                    vendor = "llvm"
+
+        if vendor:
+            cps_platform["c_runtime_vendor"] = cps_platform["cpp_runtime_vendor"] = vendor
+        if version:
+            cps_platform["c_runtime_version"] = cps_platform["cpp_runtime_version"] = version
         return cps_platform
-
-    def _process_runtime_vendor(self):
-
 
     def get_compiler_args(self):
         args = []
