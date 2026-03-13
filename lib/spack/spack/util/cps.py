@@ -8,7 +8,7 @@ import platform
 import re
 import sys
 
-from cpspy import cps
+from spack.vendor.cpspy import cps
 
 from typing import (
     Optional
@@ -153,6 +153,10 @@ class SpackCps:
             else:
                 req = self.core_component_name
             conf.add_requires(self.component_qualifier+req)
+
+
+    def configurations(self):
+        
 
     def pkg_to_components(self):
         hsh_comp_list = []
