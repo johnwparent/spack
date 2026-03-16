@@ -24,7 +24,7 @@ def pre_install(spec):
             "collation_location" : collation_location(spec),
             "spack_python" : sys.executable,
         }
-        instrumentation_dir = os.path.join(spec.package.stage.path, "instrumentation-ec7aa2dc-b87f-45a3-8022-fe01c5f59984/v1/query")
+        instrumentation_dir = os.path.join(spec.package.stage.path, "instrumentation/v1/query")
         sfsys.mkdirp(instrumentation_dir)
         with open(os.path.join(instrumentation_dir, "query.json"), "w+", encoding="utf-8") as f:
             f.write(template.render(context))
