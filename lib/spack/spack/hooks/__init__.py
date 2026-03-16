@@ -29,6 +29,7 @@ class _HookRunner:
     HOOK_ORDER = [
         "spack.hooks.module_file_generation",
         "spack.hooks.licensing",
+        "spack.hooks.cmake_instrumentation",
         "spack.hooks.sbang",
         "spack.hooks.windows_runtime_linkage",
         "spack.hooks.drop_redundant_rpaths",

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": [
+    "postGenerate", "preCMakeBuild", "postCMakeBuild"
+  ],
+  "options": [
+    "staticSystemInformation", "dynamicSystemInformation", "trace"
+  ],
+  "callbacks": [
+    "{{ spack_python }} {{ collator_script }} {{ collation_location }}"
+  ]
+}
