@@ -12,7 +12,7 @@ import re
 import sys
 import traceback
 import warnings
-from typing import Dict, Iterable, List, Optional, Set, Tuple, Type
+from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple, Type
 
 import spack.error
 import spack.llnl.util.filesystem
@@ -212,10 +212,11 @@ def libraries_in_windows_paths(path_hints: Optional[List[str]] = None) -> Dict[s
     return path_to_dict(search_paths)
 
 
-def _group_by_prefix(paths: List[str]) -> Dict[str, Set[str]]:
+def _group_by_prefix(paths: List[str], grouper: Optional[Callable]=None) -> Dict[str, Set[str]]:
     groups = collections.defaultdict(set)
+    path_grouper = grouper if grouper else os.path.dirname
     for p in paths:
-        groups[os.path.dirname(p)].add(p)
+        groups[path_grouper(p)].add(p)
     return groups
 
 
@@ -268,8 +269,9 @@ class Finder:
             return []
 
         result = []
+        path_grouper = getattr(pkg, "prefix_grouper", None)
         for candidate_path, items_in_prefix in _group_by_prefix(
-            spack.llnl.util.lang.dedupe(paths)
+            spack.llnl.util.lang.dedupe(paths), path_grouper
         ).items():
             # TODO: multiple instances of a package can live in the same
             # prefix, and a package implementation can return multiple specs
