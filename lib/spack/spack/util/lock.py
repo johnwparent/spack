@@ -2,42 +2,50 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
-import errno
 import os
-import socket
 import stat
 import sys
 import time
 from datetime import datetime
 from types import TracebackType
-from typing import IO, Callable, Dict, Generator, Optional, Tuple, Type, Union
+from typing import Callable, Generator, Optional, Tuple, Type  # novm
 
 import spack.error
 from spack.util import lang, tty
+from spack.util.lock_common import (
+    FILE_TRACKER,
+    CantCreateLockError,
+    GenericLockBackend,
+    LockError,
+    LockPermissionError,
+    LockROFileError,
+)
 from spack.util.string import plural
 
-if sys.platform != "win32":
-    import fcntl
+
+if sys.platform == "win32":
+    from spack.util.lock_windows import LockType, WindowsBackend
+else:
+    from spack.util.lock_posix import LockType, PosixBackend
 
 
 __all__ = [
-    "check_lock_safety",
-    "CantCreateLockError",
-    "DummyBackend",
     "Lock",
     "LockDowngradeError",
+    "LockUpgradeError",
+    "LockTransaction",
+    "WriteTransaction",
+    "ReadTransaction",
     "LockError",
+    "LockTimeoutError",
     "LockPermissionError",
     "LockROFileError",
-    "LockTimeoutError",
-    "LockTransaction",
-    "LockUpgradeError",
-    "PosixBackend",
-    "ReadTransaction",
-    "TryReadTransaction",
-    "TryWriteTransaction",
-    "WriteTransaction",
+    "CantCreateLockError",
+    "DummyBackend",
+    "FILE_TRACKER",
 ]
+
+WHOLE_FILE_RANGE = 0xFFFFFFFF if sys.platform == "win32" else 0
 
 
 ExitFnType = Callable[
@@ -45,106 +53,11 @@ ExitFnType = Callable[
     Optional[bool],
 ]
 ReleaseFnType = Optional[Callable[[], Optional[bool]]]
-DevIno = Tuple[int, int]  # (st_dev, st_ino) from os.stat_result
 
 
 def true_fn() -> bool:
     """A function that always returns True."""
     return True
-
-
-class OpenFile:
-    """Record for keeping track of open lockfiles (with reference counting)."""
-
-    __slots__ = ("fh", "key", "refs")
-
-    def __init__(self, fh: IO[bytes], key: DevIno):
-        self.fh = fh
-        self.key = key  # (dev, ino)
-        self.refs = 0
-
-
-class OpenFileTracker:
-    """Track open lockfiles by inode, to minimize the number of open file descriptors.
-
-    ``fcntl`` locks are associated with an inode. If a process closes *any* file descriptor for an
-    inode, all fcntl locks the process holds on that inode are released, even if other descriptors
-    for the same inode are still open.
-
-    To avoid accidentally dropping locks we keep at most one open file descriptor per inode and
-    reference-count it. The descriptor is only closed when the reference count reaches zero (i.e.
-    no ``Lock`` in this process still needs it).
-
-    Descriptors are *not* released on unlock; they are kept alive across lock/unlock cycles so that
-    the next lock operation can skip re-opening the file. ``PosixBackend._ensure_valid_handle``
-    re-validates the on-disk inode before each lock operation and drops a stale descriptor when
-    the file was deleted and replaced.
-    """
-
-    def __init__(self):
-        self._descriptors: Dict[DevIno, OpenFile] = {}
-
-    def get_ref_for_inode(self, key: DevIno) -> Optional[OpenFile]:
-        """Fast lookup: do we already have this inode open?"""
-        return self._descriptors.get(key)
-
-    def create_and_track(self, path: str) -> OpenFile:
-        """Slow path: Open file, handle directory creation, track it."""
-        # Open the file and create it if it doesn't exist (incl. directories).
-        try:
-            try:
-                fd = os.open(path, os.O_RDWR | os.O_CREAT)
-                mode = "rb+"
-            except PermissionError:
-                fd = os.open(path, os.O_RDONLY)
-                mode = "rb"
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise
-            # Directory missing, create and retry
-            try:
-                os.makedirs(os.path.dirname(path), exist_ok=True)
-                fd = os.open(path, os.O_RDWR | os.O_CREAT)
-            except OSError:
-                raise CantCreateLockError(path)
-            mode = "rb+"
-
-        # Get file identifier (device, inode) for tracking.
-        stat = os.fstat(fd)
-        key = (stat.st_dev, stat.st_ino)
-
-        # Did we open a file we already track, e.g. a symlink to existing tracker file.
-        if key in self._descriptors:
-            os.close(fd)
-            existing = self._descriptors[key]
-            existing.refs += 1
-            return existing
-
-        # Track the new file.
-        fh = os.fdopen(fd, mode)
-        obj = OpenFile(fh, key)
-        obj.refs += 1
-        self._descriptors[key] = obj
-        return obj
-
-    def release(self, open_file: OpenFile):
-        """Decrement the reference count and close the file handle when it reaches zero."""
-        open_file.refs -= 1
-        if open_file.refs <= 0:
-            if self._descriptors.get(open_file.key) is open_file:
-                del self._descriptors[open_file.key]
-            open_file.fh.close()
-
-    def purge(self):
-        """Close all tracked file descriptors and clear the cache."""
-        for open_file in self._descriptors.values():
-            open_file.fh.close()
-        self._descriptors.clear()
-
-
-#: Open file descriptors for locks in this process. Used to prevent one process
-#: from opening the sam file many times for different byte range locks
-FILE_TRACKER = OpenFileTracker()
 
 
 def _attempts_str(wait_time, nattempts):
@@ -156,194 +69,11 @@ def _attempts_str(wait_time, nattempts):
     return " after {} and {}".format(lang.pretty_seconds(wait_time), attempts)
 
 
-class LockType:
-    READ = 0
-    WRITE = 1
-
-    @staticmethod
-    def to_str(tid):
-        ret = "READ"
-        if tid == LockType.WRITE:
-            ret = "WRITE"
-        return ret
-
-    @staticmethod
-    def to_module(tid):
-        lock = fcntl.LOCK_SH
-        if tid == LockType.WRITE:
-            lock = fcntl.LOCK_EX
-        return lock
-
-    @staticmethod
-    def is_valid(op: int) -> bool:
-        return op == LockType.READ or op == LockType.WRITE
-
-
-class PosixBackend:
-    """fcntl-based lock backend for POSIX systems."""
-
-    def __init__(self, path: str, start: int, length: int, debug: bool = False) -> None:
-        self.path = path
-        self._start = start
-        self._length = length
-        self.debug = debug
-        self._file_ref: Optional[OpenFile] = None
-        self._cached_key: Optional[DevIno] = None
-        # PID and host of the lock holder (only used in debug mode)
-        self.pid: Optional[int] = None
-        self.old_pid: Optional[int] = None
-        self.host: Optional[str] = None
-        self.old_host: Optional[str] = None
-
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        del state["_file_ref"]
-        del state["_cached_key"]
-        return state
-
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        self._file_ref = None
-        self._cached_key = None
-
-    def _ensure_valid_handle(self) -> IO[bytes]:
-        """Return a valid file handle for the lock file, opening or re-opening as needed.
-
-        On the happy path this costs a single ``os.stat`` syscall: if the inode on disk matches
-        ``_cached_key``, the already-open file handle is returned immediately.
-
-        If the inode changed (the lock file was deleted and replaced by another process), the stale
-        reference is released and a fresh one is obtained.  If the file does not exist yet it is
-        created (along with any missing parent directories).
-        """
-        try:
-            # Check what is currently on disk. This is the only syscall in the happy path.
-            stat_res = os.stat(self.path)
-            current_key = (stat_res.st_dev, stat_res.st_ino)
-
-            # Double-check that our cache corresponds the file on disk.
-            if self._file_ref and not self._file_ref.fh.closed:
-                if self._cached_key == current_key:
-                    return self._file_ref.fh
-
-                # Stale path: file was deleted and replaced on disk.
-                FILE_TRACKER.release(self._file_ref)
-                self._file_ref = None
-
-            # Get reference to the verified inode from the tracker if it exist, or a new one.
-            existing_ref = FILE_TRACKER.get_ref_for_inode(current_key)
-            if existing_ref:
-                self._file_ref = existing_ref
-                self._file_ref.refs += 1
-            else:
-                # We don't have it tracked, so we need to open and track it ourselves.
-                self._file_ref = FILE_TRACKER.create_and_track(self.path)
-        except OSError as e:
-            # Re-raise all errors except for "file not found".
-            if e.errno != errno.ENOENT:
-                raise
-
-            # File was not found, so remove it from our cache.
-            if self._file_ref:
-                FILE_TRACKER.release(self._file_ref)
-                self._file_ref = None
-
-            self._file_ref = FILE_TRACKER.create_and_track(self.path)
-
-        # Update our local cache of what we hold
-        self._cached_key = self._file_ref.key
-
-        return self._file_ref.fh
-
-    def prepare(self, op: int) -> None:
-        """Ensure the lock file is open; raise if a write lock is requested on a read-only file."""
-        fh = self._ensure_valid_handle()
-        if LockType.to_module(op) == fcntl.LOCK_EX and fh.mode == "rb":
-            raise LockROFileError(self.path)
-
-    def poll(self, op: int) -> bool:
-        """Attempt to acquire the lock in a non-blocking manner. Return whether
-        the locking attempt succeeds
-        """
-        assert self._file_ref is not None, "cannot poll a lock without the file being set"
-        fh = self._file_ref.fh.fileno()
-        module_op = LockType.to_module(op)
-        try:
-            # Try to get the lock (will raise if not available.)
-            fcntl.lockf(fh, module_op | fcntl.LOCK_NB, self._length, self._start, os.SEEK_SET)
-
-            # help for debugging distributed locking
-            if self.debug:
-                # All locks read the owner PID and host
-                self._read_log_debug_data()
-                tty.debug(
-                    "{0} locked {1} [{2}:{3}] (owner={4})".format(
-                        LockType.to_str(op), self.path, self._start, self._length, self.pid
-                    ),
-                    level=2,
-                )
-
-                # Exclusive locks write their PID/host
-                if module_op == fcntl.LOCK_EX:
-                    self._write_log_debug_data()
-
-            return True
-
-        except OSError as e:
-            # EAGAIN and EACCES == locked by another process (so try again)
-            if e.errno not in (errno.EAGAIN, errno.EACCES):
-                raise
-
-        return False
-
-    def _read_log_debug_data(self) -> None:
-        """Read PID and host data out of the file if it is there."""
-        assert self._file_ref is not None, "cannot read debug log without the file being set"
-        self.old_pid = self.pid
-        self.old_host = self.host
-
-        self._file_ref.fh.seek(0)
-        line = self._file_ref.fh.read()
-        if line:
-            pid, host = line.decode("utf-8").strip().split(",")
-            _, _, pid = pid.rpartition("=")
-            _, _, self.host = host.rpartition("=")
-            self.pid = int(pid)
-
-    def _write_log_debug_data(self) -> None:
-        """Write PID and host data to the file, recording old values."""
-        assert self._file_ref is not None, "cannot write debug log without the file being set"
-        self.old_pid = self.pid
-        self.old_host = self.host
-
-        self.pid = os.getpid()
-        self.host = socket.gethostname()
-
-        # write pid, host to disk to sync over FS
-        self._file_ref.fh.seek(0)
-        self._file_ref.fh.write(f"pid={self.pid},host={self.host}".encode("utf-8"))
-        self._file_ref.fh.truncate()
-        self._file_ref.fh.flush()
-        os.fsync(self._file_ref.fh.fileno())
-
-    def release(self) -> None:
-        """Releases a lock using POSIX locks (``fcntl.lockf``)
-
-        Releases the lock regardless of mode. Note that read locks may be masquerading as write
-        locks, but this removes either.
-        """
-        assert self._file_ref is not None, "cannot unlock without the file being set"
-        fcntl.lockf(
-            self._file_ref.fh.fileno(), fcntl.LOCK_UN, self._length, self._start, os.SEEK_SET
-        )
-
-    def cleanup(self, path: str) -> None:
-        """Remove the lock file."""
-        os.unlink(path)
-
-
-class DummyBackend:
+class DummyBackend(GenericLockBackend):
     """No-op lock backend: all operations succeed without acquiring any real locks."""
+
+    def __init__(self) -> None:  # doesn't need path/start/length: nothing is ever tracked
+        pass
 
     def prepare(self, op: int) -> None:
         pass
@@ -356,6 +86,22 @@ class DummyBackend:
 
     def cleanup(self, path: str) -> None:
         pass
+
+
+#: Every backend derives from GenericLockBackend, and ``Lock`` only ever calls the methods
+#: defined there -- using the base class here (rather than a Union of concrete backends) avoids
+#: needing to reference the Windows-only ``WindowsBackend`` outside of a literal
+#: ``sys.platform``-guarded import, which is what lets type checkers running on non-Windows
+#: platforms (e.g. Read the Docs) skip ``spack.util.lock_windows`` entirely.
+BackendType = GenericLockBackend
+
+
+def platform_lock_backend(path, start, length, debug) -> BackendType:
+    """Per platform dispatch for lock backend implementation"""
+    if sys.platform == "win32":
+        return WindowsBackend(path, start, length, debug=debug)
+    else:
+        return PosixBackend(path, start, length, debug=debug)
 
 
 class Lock:
@@ -402,15 +148,17 @@ class Lock:
             desc: optional debug message lock description, which is helpful for distinguishing
                 between different Spack locks.
             enable: when False, swap in a no-op backend so all lock operations succeed
-                without acquiring a real filesystem lock. Always disabled on Windows.
+                without acquiring a real filesystem lock.
         """
         self.path = path
         self._reads = 0
         self._writes = 0
 
-        # byte range parameters
+        # byte range parameters. A zero length means "lock to the end of the file" on POSIX,
+        # but Windows has no such convention -- LockFileEx always needs an explicit range -- so
+        # a length of 0 is normalized to WHOLE_FILE_RANGE there.
         self._start = start
-        self._length = length
+        self._length = length or WHOLE_FILE_RANGE
 
         # enable debug mode
         self.debug = debug
@@ -423,9 +171,9 @@ class Lock:
         # user sets a timeout for each attempt)
         self.default_timeout = default_timeout or None
 
-        if sys.platform != "win32" and enable:
-            self.backend: Union[PosixBackend, DummyBackend] = PosixBackend(
-                path, start, length, debug=debug
+        if enable:
+            self.backend: BackendType = platform_lock_backend(
+                path, start, self._length, debug=debug
             )
         else:
             self.backend = DummyBackend()
@@ -480,6 +228,10 @@ class Lock:
         self.__dict__.update(state)
         self._reads = 0
         self._writes = 0
+
+    def _poll_lock(self, op: int) -> bool:
+        """Direct pass-through to the backend's single non-blocking lock attempt."""
+        return self.backend.poll(op)
 
     def _lock(self, op: int, timeout: Optional[float] = None) -> Tuple[float, int]:
         """This takes a lock using POSIX locks (``fcntl.lockf``).
@@ -575,7 +327,12 @@ class Lock:
         """Fork-safety: always re-affirm the lock with one non-blocking attempt. In the same
         process, re-locking an already-held byte range succeeds instantly (POSIX). In a forked
         child that doesn't own the POSIX lock, the call fails immediately and we raise. Use WRITE
-        if we hold an exclusive lock so we don't accidentally downgrade it."""
+        if we hold an exclusive lock so we don't accidentally downgrade it.
+
+        No-op on Windows (Spawn only)
+        """
+        if sys.platform == "win32":
+            return
         if self._writes > 0:
             op = LockType.WRITE
         elif self._reads > 0:
@@ -607,12 +364,16 @@ class Lock:
         """Non-blocking attempt to acquire an exclusive write lock.
 
         Returns True if the lock was acquired, False if it would block.
+        Handles three cases: no lock held (fresh acquire), read held (upgrade -- fully replaces
+        the read with a write, unlike the nested behavior of ``acquire_write``), or write already
+        held (nested).
         """
         if self._writes == 0:
             self.backend.prepare(LockType.WRITE)
             if not self.backend.poll(LockType.WRITE):
                 return False
-            self._writes += 1
+            self._reads = 0
+            self._writes = 1
             self._log_acquired("WRITE LOCK", 0, 1)
             return True
         else:
@@ -659,7 +420,7 @@ class Lock:
         """
         timeout = timeout or self.default_timeout
 
-        if self._reads == 1 and self._writes == 0:
+        if self._reads >= 1 and self._writes == 0:
             self._log_upgrading()
             # can raise LockError.
             wait_time, nattempts = self._lock(LockType.WRITE, timeout=timeout)
@@ -821,8 +582,15 @@ class LockTransaction:
         self._release_fn = release
 
     def __enter__(self):
-        if self._enter() and self._acquire_fn:
-            return self._acquire_fn()
+        entered = self._enter()
+        if entered and self._acquire_fn:
+            try:
+                return self._acquire_fn()
+            except BaseException:
+                # If __enter__ raises, Python never calls __exit__, so the lock _enter() just
+                # acquired would otherwise leak.
+                self._exit(None)
+                raise
 
     def __exit__(
         self,
@@ -977,10 +745,6 @@ class TryWriteTransaction(WriteTransaction):
         return super().__exit__(exc_type, exc_value, traceback)
 
 
-class LockError(Exception):
-    """Raised for any errors related to locks."""
-
-
 class LockDowngradeError(LockError):
     """Raised when unable to downgrade from a write to a read lock."""
 
@@ -1011,25 +775,4 @@ class LockUpgradeError(LockError):
 
     def __init__(self, path: str) -> None:
         msg = "Cannot upgrade lock from read to write on file: %s" % path
-        super().__init__(msg)
-
-
-class LockPermissionError(LockError):
-    """Raised when there are permission issues with a lock."""
-
-
-class LockROFileError(LockPermissionError):
-    """Tried to take an exclusive lock on a read-only file."""
-
-    def __init__(self, path: str) -> None:
-        msg = "Can't take write lock on read-only file: %s" % path
-        super().__init__(msg)
-
-
-class CantCreateLockError(LockPermissionError):
-    """Attempt to create a lock in an unwritable location."""
-
-    def __init__(self, path: str) -> None:
-        msg = "cannot create lock '%s': " % path
-        msg += "file does not exist and location is not writable"
         super().__init__(msg)
