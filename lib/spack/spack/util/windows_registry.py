@@ -6,15 +6,42 @@
 Utility module for dealing with Windows Registry.
 """
 
+import itertools
 import os
 import re
 import sys
 from contextlib import contextmanager
 
 from spack.util import tty
+from spack.util.lang import Retry
 
 if sys.platform == "win32":
     import winreg
+
+#: the system cannot find the file specified - lookup item does not exist
+ERROR_FILE_NOT_FOUND = 2
+#: Access is denied - user not in key's ACL
+ERROR_ACCESS_DENIED = 5
+#: The handle is invalid - a cached key handle has gone stale
+ERROR_INVALID_HANDLE = 6
+#: No more data is available - an enumeration has run out of items
+ERROR_NO_MORE_ITEMS = 259
+
+#: Errors that will never be resolved by repeating the operation. Everything else the
+#: registry reports is treated as potentially transient, matching the fact that the registry
+#: raises the same generic error for every atypical condition.
+_TERMINAL_ERRORS = (ERROR_FILE_NOT_FOUND, ERROR_ACCESS_DENIED, ERROR_NO_MORE_ITEMS)
+
+
+def _operation_retry() -> Retry:
+    """Retry policy for a single registry operation.
+
+    Registry contention clears more or less immediately, so the backoff is deliberately tiny:
+    the point is to yield briefly to whichever process holds the key, not to wait out a remote
+    service. Note that ``Retry`` rejects a ``backoff_max`` of zero, so this cannot be reduced
+    to a pure busy-retry.
+    """
+    return Retry(total=3, backoff_factor=0.01, backoff_jitter=0.01, backoff_max=0.1)
 
 
 class RegistryValue:
@@ -33,12 +60,15 @@ class RegistryKey:
     Class wrapping a Windows registry key
     """
 
-    def __init__(self, name, handle):
+    def __init__(self, name, handle=None, parent=None):
         self.path = name
         self.name = os.path.split(name)[-1]
         self._handle = handle
-        self._keys = []
-        self._values = {}
+        self._parent = parent
+        # None rather than an empty container, so that a key which genuinely has no subkeys
+        # or no values is enumerated once instead of on every access
+        self._keys = None
+        self._values = None
 
     @property
     def values(self):
@@ -56,23 +86,61 @@ class RegistryKey:
 
     @property
     def hkey(self):
+        if self._handle is None and self._parent is not None:
+            # A key that was reached through its parent can always be reopened through it, so
+            # traversals are free to release handles they are done with, and a caller that
+            # holds on to a key and reads from it later still works.
+            self._handle = self._parent.OpenKeyEx(self.name, access=winreg.KEY_READ)
         return self._handle
 
-    @contextmanager
-    def winreg_error_handler(self, name, *args, **kwargs):
-        try:
-            yield
-        except OSError as err:
-            # Expected errors that occur on occasion, these are easily
-            # debug-able and have sufficiently verbose reporting and obvious cause
-            # [WinError 2]: the system cannot find the file specified - lookup item does
-            # not exist
-            # [WinError 5]: Access is denied - user not in key's ACL
-            if hasattr(err, "winerror") and err.winerror in (5, 2):
-                raise err
-            # Other OS errors are more difficult to diagnose, so we wrap them in some extra
-            # reporting
-            raise InvalidRegistryOperation(name, err, *args, **kwargs) from err
+    def close(self):
+        """Release this key's handle. Keys reached by enumeration reopen it on next use."""
+        if self._handle is not None:
+            self._handle.Close()
+            self._handle = None
+
+    def _invalidate_handle(self):
+        """Drop a stale handle so the next access reopens the key through its parent"""
+        if self._parent is not None:
+            self._handle = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+        return False
+
+    def _winreg_call(self, name, func, *args, **kwargs):
+        """Invoke a single winreg function, retrying only that operation if it fails.
+
+        The registry offers no locking, and other processes rewrite it while Spack reads it,
+        so individual operations fail spuriously. Retrying at this level means a flaky call
+        costs one more call, rather than discarding the search, query, or subkey traversal
+        that contained it.
+
+        ``func`` is called as ``func(self.hkey, *args, **kwargs)``; ``name`` and the logical
+        arguments are used only for error reporting.
+        """
+        retry = _operation_retry()
+        for _ in retry:
+            try:
+                return func(self.hkey, *args, **kwargs)
+            except OSError as err:
+                winerror = getattr(err, "winerror", None)
+                # Expected errors that occur on occasion, these are easily
+                # debug-able and have sufficiently verbose reporting and obvious cause
+                if winerror in _TERMINAL_ERRORS:
+                    raise
+                if winerror == ERROR_INVALID_HANDLE:
+                    self._invalidate_handle()
+                if not retry.is_last_attempt():
+                    tty.debug(f"[WINREG ACCESS] Retrying {name} on {self.path} after error: {err}")
+                    continue
+                # Other OS errors are more difficult to diagnose, so we wrap them in some extra
+                # reporting
+                raise InvalidRegistryOperation(name, err, *args, **kwargs) from err
+        raise AssertionError("unreachable")
 
     def OpenKeyEx(self, subname, **kwargs):
         """Convenience wrapper around winreg.OpenKeyEx"""
@@ -80,14 +148,12 @@ class RegistryKey:
             f"[WINREG ACCESS] Accessing Reg Key {self.path}/{subname} with"
             f" {kwargs.get('access', 'default')} access"
         )
-        with self.winreg_error_handler("OpenKeyEx", subname, **kwargs):
-            return winreg.OpenKeyEx(self.hkey, subname, **kwargs)
+        return self._winreg_call("OpenKeyEx", winreg.OpenKeyEx, subname, **kwargs)
 
     def QueryInfoKey(self):
         """Convenience wrapper around winreg.QueryInfoKey"""
         tty.debug(f"[WINREG ACCESS] Obtaining key,value information from key {self.path}")
-        with self.winreg_error_handler("QueryInfoKey"):
-            return winreg.QueryInfoKey(self.hkey)
+        return self._winreg_call("QueryInfoKey", winreg.QueryInfoKey)
 
     def EnumKey(self, index):
         """Convenience wrapper around winreg.EnumKey"""
@@ -95,57 +161,79 @@ class RegistryKey:
             "[WINREG ACCESS] Obtaining name of subkey at index "
             f"{index} from registry key {self.path}"
         )
-        with self.winreg_error_handler("EnumKey", index):
-            return winreg.EnumKey(self.hkey, index)
+        return self._winreg_call("EnumKey", winreg.EnumKey, index)
 
     def EnumValue(self, index):
         """Convenience wrapper around winreg.EnumValue"""
         tty.debug(
             f"[WINREG ACCESS] Obtaining value at index {index} from registry key {self.path}"
         )
-        with self.winreg_error_handler("EnumValue", index):
-            return winreg.EnumValue(self.hkey, index)
+        return self._winreg_call("EnumValue", winreg.EnumValue, index)
 
     def QueryValueEx(self, name, **kwargs):
         """Convenience wrapper around winreg.QueryValueEx"""
         tty.debug(f"[WINREG ACCESS] Obtaining value {name} from registry key {self.path}")
-        with self.winreg_error_handler("QueryValueEx", name, **kwargs):
-            return winreg.QueryValueEx(self.hkey, name, **kwargs)
+        return self._winreg_call("QueryValueEx", winreg.QueryValueEx, name, **kwargs)
 
     def __str__(self):
         return self.name
 
     def _gather_subkey_info(self):
         """Composes all subkeys into a list for access"""
-        if self._keys:
+        if self._keys is not None:
             return
-        sub_keys, _, _ = self.QueryInfoKey()
-        for i in range(sub_keys):
-            sub_name = self.EnumKey(i)
+        self._keys = []
+        # The registry is live: installers, MSI, and Windows Update add and remove keys while
+        # we walk them, so the subkey count reported by QueryInfoKey is only ever a hint.
+        # Enumerate until the registry itself reports the end of the enumeration, which also
+        # picks up keys added after a count would have been taken.
+        for i in itertools.count():
             try:
-                sub_handle = self.OpenKeyEx(sub_name, access=winreg.KEY_READ)
-                self._keys.append(RegistryKey(os.path.join(self.path, sub_name), sub_handle))
+                sub_name = self.EnumKey(i)
             except OSError as e:
-                if hasattr(e, "winerror") and e.winerror == 5:
-                    # This is a permission error, we can't read this key
-                    # move on
-                    pass
-                else:
-                    raise
+                if getattr(e, "winerror", None) == ERROR_NO_MORE_ITEMS:
+                    break
+                raise
+            try:
+                # Opening here is what tells us whether the key is readable at all, so that
+                # keys we cannot read are dropped as callers expect. Recording the parent
+                # means the handle can be released once a traversal is done with the key and
+                # transparently reopened if the caller reads from it later.
+                sub_handle = self.OpenKeyEx(sub_name, access=winreg.KEY_READ)
+            except OSError as e:
+                if getattr(e, "winerror", None) in (ERROR_ACCESS_DENIED, ERROR_FILE_NOT_FOUND):
+                    # Either a permission error, so we can't read this key, or the key was
+                    # removed between being enumerated and being opened. Move on either way.
+                    continue
+                raise
+            self._keys.append(
+                RegistryKey(os.path.join(self.path, sub_name), sub_handle, parent=self)
+            )
 
     def _gather_value_info(self):
         """Compose all values for this key into a dict of form value name: RegistryValue Object"""
-        if self._values:
+        if self._values is not None:
             return
-        _, values, _ = self.QueryInfoKey()
-        for i in range(values):
-            value_name, value_data, _ = self.EnumValue(i)
+        self._values = {}
+        # Value counts race against concurrent writers exactly as subkey counts do; see
+        # _gather_subkey_info.
+        for i in itertools.count():
+            try:
+                value_name, value_data, _ = self.EnumValue(i)
+            except OSError as e:
+                if getattr(e, "winerror", None) == ERROR_NO_MORE_ITEMS:
+                    break
+                raise
             self._values[value_name] = RegistryValue(value_name, value_data, self)
 
     def get_subkey(self, sub_key):
         """Returns subkey of name sub_key in a RegistryKey objects"""
+        # Unlike enumeration, this open is deliberately eager: callers rely on a nonexistent
+        # subkey raising FileNotFoundError here rather than at first use.
         return RegistryKey(
-            os.path.join(self.path, sub_key), self.OpenKeyEx(sub_key, access=winreg.KEY_READ)
+            os.path.join(self.path, sub_key),
+            self.OpenKeyEx(sub_key, access=winreg.KEY_READ),
+            parent=self,
         )
 
     def get_value(self, val_name):
@@ -174,6 +262,9 @@ class _HKEY_CONSTANT(RegistryKey):
         if not self._handle:
             self._handle = self._get_hkey(self.path)
         return self._handle
+
+    def close(self):
+        """The predefined HKEY constants are always open and must never be closed"""
 
 
 class HKEY:
@@ -294,7 +385,7 @@ class WindowsRegistryView:
 
         Note: this method obtains only direct subkeys of the given key and does not
         descend to transitive subkeys. For this behavior, see ``find_matching_subkeys``"""
-        self._regex_match_subkeys(subkey_name)
+        return self._regex_match_subkeys(subkey_name)
 
     def get_values(self):
         if not self._valid_reg_check():
@@ -320,15 +411,23 @@ class WindowsRegistryView:
         if not self._valid_reg_check():
             raise InvalidKeyError(self.key)
         with self.invalid_reg_ref_error_handler():
-            queue = self.reg.subkeys
+            # Copy: self.reg.subkeys is the key's own cached child list, and extending it
+            # below would append grandchildren into that cache
+            queue = list(self.reg.subkeys)
             for key in queue:
-                if stop_condition(key):
-                    if collect_all_matching:
-                        collection.append(key)
-                    else:
-                        return key
+                matched = stop_condition(key)
+                if matched and not collect_all_matching:
+                    return key
+                if matched:
+                    collection.append(key)
                 if recursive:
                     queue.extend(key.subkeys)
+                if not matched:
+                    # Release the handle now that this key has been matched against and
+                    # descended into. Without this a recursive walk holds one open handle
+                    # for every key in the subtree at once. Keys we return keep theirs, and
+                    # any key reopens through its parent if it is read from later.
+                    key.close()
             return collection if collection else None
 
     def find_subkey(self, subkey_name: str, recursive: bool = True):
@@ -418,5 +517,7 @@ class InvalidRegistryOperation(RegistryError):
         )
         message += "\n\t".join([f"{k}:{v}" for k, v in kwargs.items()])
         message += "\n"
-        message += "\n\t".join(args)
-        super().__init__(self, message)
+        # str(): positional arguments are not always strings, e.g. the index passed by
+        # EnumKey and EnumValue
+        message += "\n\t".join(str(arg) for arg in args)
+        super().__init__(message)
