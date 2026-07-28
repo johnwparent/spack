@@ -375,12 +375,19 @@ class WindowsKitExternalPaths:
             "SOFTWARE\\WOW6432Node\\Microsoft\\Microsoft SDKs\\Windows",
             root_key=spack.util.windows_registry.HKEY.HKEY_LOCAL_MACHINE,
         )
+        if not windows_reg:
+            # couldn't find key, return empty list
+            return []
         for key in filter(sdk_regex.match, [x.name for x in windows_reg.get_subkeys()]):
             reg = windows_reg.get_subkey(key)
+            try:
+                installation_folder = reg.get_value("InstallationFolder").value
+            except FileNotFoundError:
+                # an SDK version key without an InstallationFolder value tells us nothing
+                tty.debug(f"No InstallationFolder value for SDK version {key}")
+                continue
             sdk_paths.extend(
-                WindowsKitExternalPaths.find_windows_kit_lib_paths(
-                    reg.get_value("InstallationFolder").value
-                )
+                WindowsKitExternalPaths.find_windows_kit_lib_paths(installation_folder)
             )
         return sdk_paths
 

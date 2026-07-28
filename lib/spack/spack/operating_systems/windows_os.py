@@ -92,7 +92,7 @@ class WindowsOs(OperatingSystem):
             )
 
         # Second strategy: Find MSVC via the registry
-        def try_query_registry(retry=False):
+        def try_query_registry():
             winreg_report_error = lambda e: tty.debug(
                 'Windows registry query on "SOFTWARE\\WOW6432Node\\Microsoft"'
                 f"under HKEY_LOCAL_MACHINE: {str(e)}"
@@ -101,10 +101,12 @@ class WindowsOs(OperatingSystem):
                 # Registry interactions are subject to race conditions, etc and can generally
                 # be flakey, do this in a catch block to prevent reg issues from interfering
                 # with compiler detection
+                # Note: Winreg does not support locking. The registry module retries each
+                # individual operation that fails spuriously.
                 msft = winreg.WindowsRegistryView(
                     "SOFTWARE\\WOW6432Node\\Microsoft", winreg.HKEY.HKEY_LOCAL_MACHINE
                 )
-                return msft.find_subkeys(r"VisualStudio_.*", recursive=False)
+                return msft.find_subkeys(r"VisualStudio_.*", recursive=False) or []
             except OSError as e:
                 # OSErrors propagated into caller by Spack's registry module are expected
                 # and indicate a known issue with the registry query
@@ -117,22 +119,12 @@ class WindowsOs(OperatingSystem):
                 # an unexpected error type, and are handled specifically
                 # as the underlying cause is difficult/impossible to determine
                 # without manually exploring the registry
-                # These errors can also be spurious (race conditions)
-                # and may resolve on re-execution of the query
-                # or are permanent (specific types of permission issues)
                 # but the registry raises the same exception for all types of
                 # atypical errors
-                if retry:
-                    winreg_report_error(e)
+                winreg_report_error(e)
                 return []
 
         vs_entries = try_query_registry()
-        if not vs_entries:
-            # Occasional spurious race conditions can arise when reading the MS reg
-            # typically these race conditions resolve immediately and we can safely
-            # retry the reg query without waiting
-            # Note: Winreg does not support locking
-            vs_entries = try_query_registry(retry=True)
 
         vs_paths = []
 
@@ -149,6 +141,9 @@ class WindowsOs(OperatingSystem):
                     pass
                 else:
                     raise
+            except winreg.RegistryError as e:
+                # One unreadable VS entry should cost us that entry, not compiler detection
+                tty.debug(f"Could not read Visual Studio registry entry {entry.path}: {e}")
 
         _compiler_search_paths.extend(vs_paths)
         return _compiler_search_paths
