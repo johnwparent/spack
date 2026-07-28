@@ -8,8 +8,10 @@ import fnmatch
 import functools
 import itertools
 import os
+import random
 import re
 import sys
+import time
 import traceback
 import types
 import typing
@@ -1217,3 +1219,54 @@ class PriorityOrderedMapping(Mapping[KT, VT]):
         self._priorities = [(p, k) for p, k in self._priorities if k != key]
         assert len(self._data) == len(self._priorities)
         return popped_item
+
+
+class Retry:
+    """Wrapper class around retry logic"""
+
+    def __init__(
+        self,
+        total: int = 5,
+        backoff_factor: float = 1.0,
+        backoff_jitter: float = 0.0,
+        backoff_max: float = 120.0,
+    ):
+        self.total = total
+        self.count = 0
+        self.backoff_factor = backoff_factor
+        self.backoff_jitter = backoff_jitter
+        self.backoff_max = backoff_max
+
+        if self.backoff_max <= 0:
+            raise ValueError("Maximum backoff must be a positive value")
+        if self.total < 1:
+            raise ValueError("Retry total must be at least 1")
+
+    def is_last_attempt(self):
+        """Return if this the retry counter is on last attempt"""
+        return self.count >= self.total - 1
+
+    def is_exhausted(self):
+        """Return if this the retry counter is exhausted"""
+        return self.count >= self.total
+
+    def backoff(self) -> float:
+        """Return the backoff duration in seconds for the current attempt"""
+        value: float = self.backoff_factor * (2 ** (self.count - 1))
+        if self.backoff_jitter != 0.0:
+            value += random.random() * self.backoff_jitter
+        return float(max(0, min(self.backoff_max, value)))
+
+    def sleep(self) -> None:
+        """Sleep for the backoff duration of the current attempt"""
+        time.sleep(self.backoff())
+
+    def __iter__(self):
+        """Convenient iterator function that handles doing backoff automatically"""
+        self.count = 0
+        while True:
+            yield self.count
+            self.count += 1
+            if self.is_exhausted():
+                break
+            self.sleep()
