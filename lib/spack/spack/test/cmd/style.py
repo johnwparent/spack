@@ -241,6 +241,67 @@ def test_external_root(external_style_root):
 
 
 @pytest.mark.skipif(not RUFF, reason="ruff is not installed.")
+def test_ruff_output_paths_are_cwd_relative(external_style_root):
+    """ruff reports paths relative to the spack root; we report them relative to the cwd.
+
+    ruff has to run from the root, because its ``exclude``/``extend-include`` patterns are
+    resolved against its working directory, so its output is rewritten instead.
+    """
+    tmp_path, _ = external_style_root
+
+    # from lib/spack, the broken file is spack/dummy.py, not lib/spack/spack/dummy.py
+    with working_dir(str(tmp_path / "lib" / "spack")):
+        output = style(
+            "--root", str(tmp_path), "--tool", "ruff-check,ruff-format", fail_on_error=False
+        )
+
+    assert style.returncode == 1
+
+    # ruff-check puts the path on an indented arrow line
+    assert " --> spack/dummy.py:" in output
+    assert " --> lib/spack/spack/dummy.py:" not in output
+
+    # ruff-format --diff puts it in the unified diff header
+    assert "--- spack/dummy.py" in output
+    assert "+++ spack/dummy.py" in output
+    assert "--- lib/spack/spack/dummy.py" not in output
+
+
+def test_rewrite_and_print_output(tmp_path: pathlib.Path, capfd):
+    """Only real paths are rewritten, and only the path part of the line."""
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "mod.py").touch()
+    report_from = tmp_path / "pkg"
+
+    def rewrite(output, pattern, root_relative=False):
+        spack.cmd.style.rewrite_and_print_output(
+            output, tmp_path, report_from, root_relative, pattern
+        )
+        return capfd.readouterr()[0]
+
+    # ruff-check reports " --> <path>:<line>:<col>"
+    assert rewrite(" --> pkg/mod.py:3:11", spack.cmd.style.RUFF_CHECK_PATH) == " --> mod.py:3:11\n"
+
+    # ruff-format --diff reports "--- <path>" / "+++ <path>"
+    diff_header = "--- pkg/mod.py\n+++ pkg/mod.py"
+    assert rewrite(diff_header, spack.cmd.style.RUFF_FORMAT_PATH) == "--- mod.py\n+++ mod.py\n"
+
+    # a removed source line can render like a diff header; it isn't a file, so leave it be
+    body = "--- section marker --"
+    assert rewrite(body, spack.cmd.style.RUFF_FORMAT_PATH) == "--- section marker --\n"
+
+    # mypy reports "<path>:<line>: error: ...", and the message may itself contain "<n>:"
+    mypy_line = "pkg/mod.py:3: error: bad thing at line:12: here"
+    assert rewrite(mypy_line, spack.cmd.style.MYPY_PATH) == (
+        "mod.py:3: error: bad thing at line:12: here\n"
+    )
+
+    # --root-relative leaves paths exactly as the tool reported them
+    arrow = " --> pkg/mod.py:3:11"
+    assert rewrite(arrow, spack.cmd.style.RUFF_CHECK_PATH, root_relative=True) == f"{arrow}\n"
+
+
+@pytest.mark.skipif(not RUFF, reason="ruff is not installed.")
 def test_style(ruff_package, tmp_path: pathlib.Path):
     root_relative = os.path.relpath(ruff_package, spack.paths.prefix)
 

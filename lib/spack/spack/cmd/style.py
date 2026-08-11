@@ -206,21 +206,30 @@ def cwd_relative(path: Path, root: Union[Path, str], initial_working_dir: Path) 
     return Path(os.path.relpath((root / path), initial_working_dir))
 
 
-def rewrite_and_print_output(
-    output,
-    root,
-    working_dir,
-    root_relative,
-    re_obj=re.compile(r"^(.+):([0-9]+):"),
-    replacement=r"{0}:{1}:",
-):
-    """rewrite output with <file>:<line>: format to respect path args"""
+#: Patterns locating the file path in a line of tool output. Each splits the line into the
+#: text before the path, the path itself, and the text after it, so that only the path is
+#: rewritten. Tools are run from ``root``, so the paths they print are root-relative.
+#:
+#: mypy reports "<path>:<line>: error: ...".
+MYPY_PATH = re.compile(r"^(?P<pre>)(?P<path>.+?)(?P<post>:[0-9]+:)")
+#: ruff check's default "full" output puts the path on an indented arrow line:
+#: " --> <path>:<line>:<col>", above a snippet of the offending code.
+RUFF_CHECK_PATH = re.compile(r"^(?P<pre>\s*--> )(?P<path>.+?)(?P<post>:[0-9]+:[0-9]+)$")
+#: ruff format --diff emits unified diff headers: "--- <path>" and "+++ <path>".
+RUFF_FORMAT_PATH = re.compile(r"^(?P<pre>(?:---|\+\+\+) )(?P<path>.+)(?P<post>)$")
+
+
+def rewrite_and_print_output(output, root, working_dir, root_relative, re_obj=MYPY_PATH):
+    """rewrite paths in tool output to respect path args"""
 
     # print results relative to current working directory
     def translate(match):
-        return replacement.format(
-            cwd_relative(Path(match.group(1)), root, working_dir), *list(match.groups()[1:])
-        )
+        path = Path(match["path"])
+        # A diff body line can look like a header ("-- foo" in the source renders as
+        # "--- foo"), so only rewrite something that is really a file we could have checked.
+        if not (Path(root) / path).exists():
+            return match[0]
+        return f"{match['pre']}{cwd_relative(path, root, working_dir)}{match['post']}"
 
     for line in output.split("\n"):
         if not line:
@@ -282,13 +291,12 @@ def run_ruff(
     files = (str(x) for x in file_list)
     if color.get_color_when():
         args += ("--color", "auto")
-    pat = re.compile("would reformat +(.*)")
-    replacement = "would reformat {0}"
 
     packed_args = (cmd,) + (*args,) + tuple(files)
     output = ruff_cmd(*packed_args, fail_on_error=False, output=str, error=str)
     returncode = ruff_cmd.returncode
-    rewrite_and_print_output(output, root, working_dir, root_relative, pat, replacement)
+    path_pattern = RUFF_CHECK_PATH if cmd == "check" else RUFF_FORMAT_PATH
+    rewrite_and_print_output(output, root, working_dir, root_relative, path_pattern)
 
     print_tool_result(f"ruff-{cmd}", returncode)
     return returncode
@@ -317,7 +325,9 @@ def run_mypy(file_list, args):
         output = mypy_cmd(*mypy_args, fail_on_error=False, output=str)
         returncode |= mypy_cmd.returncode
 
-        rewrite_and_print_output(output, args.root, args.initial_working_dir, args.root_relative)
+        rewrite_and_print_output(
+            output, args.root, args.initial_working_dir, args.root_relative, MYPY_PATH
+        )
 
     print_tool_result("mypy", returncode)
     return returncode
