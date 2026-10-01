@@ -238,6 +238,10 @@ jobs:
         ./share/spack/qa/validate_last_exit.ps1
         spack python -c "from spack_repo.builtin.packages.mpileaks.package import Mpileaks"
         ./share/spack/qa/validate_last_exit.ps1
+    - name: Bootstrap GnuPG
+      run: |
+        spack gpg list
+        ./share/spack/qa/validate_last_exit.ps1
     - name: Unit Test
       env:
         COVERAGE_FILE: coverage/.coverage-windows
