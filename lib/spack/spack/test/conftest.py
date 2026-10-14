@@ -24,7 +24,7 @@ import tempfile
 import textwrap
 import xml.etree.ElementTree
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pytest
 
@@ -1633,6 +1633,70 @@ def mock_gnupghome(monkeypatch):
 ##########
 # Fake archives and repositories
 ##########
+
+
+class TarballBuilder:
+    """Creates a tarball from members added one at a time, in archive order, so tests control
+    exactly which members are present and in which order. Parent directories are not added
+    implicitly. The compression is derived from the file extension.
+
+    Example::
+
+        archive = tarball("foo.tar.gz").symlink("foo/link", "bar.txt").file("foo/bar.txt").create()
+    """
+
+    #: write mode of the tarball by file extension. Typed as Any, as tarfile.open's type
+    #: annotations require a literal mode.
+    _MODES: Dict[str, Any] = {".gz": "w:gz", ".tgz": "w:gz", ".bz2": "w:bz2", ".xz": "w:xz"}
+
+    def __init__(self, path: Path):
+        self.path = path
+        self._members: List[Tuple[tarfile.TarInfo, Optional[bytes]]] = []
+
+    def _add(
+        self, name: str, kind: bytes, mode: int, linkname: str = "", data: Optional[bytes] = None
+    ) -> "TarballBuilder":
+        info = tarfile.TarInfo(name)
+        info.type = kind
+        info.mode = mode
+        info.linkname = linkname
+        info.size = len(data) if data is not None else 0
+        self._members.append((info, data))
+        return self
+
+    def directory(self, name: str) -> "TarballBuilder":
+        return self._add(name, tarfile.DIRTYPE, 0o755)
+
+    def file(self, name: str, contents: Union[str, bytes] = "") -> "TarballBuilder":
+        data = contents.encode() if isinstance(contents, str) else contents
+        return self._add(name, tarfile.REGTYPE, 0o644, data=data)
+
+    def symlink(self, name: str, target: str) -> "TarballBuilder":
+        """Adds a symlink to target, relative to the symlink's directory"""
+        return self._add(name, tarfile.SYMTYPE, 0o777, linkname=target)
+
+    def hardlink(self, name: str, target: str) -> "TarballBuilder":
+        """Adds a hard link to target, relative to the root of the archive"""
+        return self._add(name, tarfile.LNKTYPE, 0o644, linkname=target)
+
+    def create(self) -> str:
+        """Writes the tarball and returns its path"""
+        with tarfile.open(str(self.path), self._MODES.get(self.path.suffix, "w")) as tar:
+            for info, data in self._members:
+                tar.addfile(info, io.BytesIO(data) if data else None)
+        return str(self.path)
+
+
+@pytest.fixture
+def tarball(tmp_path_factory: pytest.TempPathFactory):
+    """Returns a function that starts a TarballBuilder for a tarball of the given file name, in a
+    temporary directory"""
+    directory = tmp_path_factory.mktemp("tarballs")
+
+    def _tarball(name: str) -> TarballBuilder:
+        return TarballBuilder(directory / name)
+
+    return _tarball
 
 
 @pytest.fixture(scope="session")
