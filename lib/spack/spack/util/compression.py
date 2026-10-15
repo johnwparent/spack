@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
+import collections
 import errno
 import inspect
 import io
@@ -12,6 +13,7 @@ import tarfile
 from typing import Any, BinaryIO, Callable, Dict, List, Optional, Tuple
 
 import spack.util.filesystem
+import spack.util.path
 import spack.util.url
 from spack.error import SpackError
 from spack.util import tty
@@ -58,7 +60,7 @@ def _prepare_untar_input(archive_file: str) -> Tuple[str, str]:
     return archive_file, outfile
 
 
-def _system_untar(archive_file: str, remove_archive_file: bool = False) -> str:
+def _system_untar(archive_file: str) -> str:
     """Returns path to unarchived tar file. Untars archive via system tar.
 
     Args:
@@ -82,21 +84,7 @@ def _system_untar(archive_file: str, remove_archive_file: bool = False) -> str:
     # ownership is known to fail, so we need to disable it.
     tar.add_default_arg("-oxf")
     tar(archive_file)
-    if remove_archive_file:
-        # remove input file to prevent two stage
-        # extractions from being treated as exploding
-        # archives by the fetcher
-        os.remove(archive_file)
     return outfile
-
-
-def _is_within(path: str, directory: str) -> bool:
-    """Returns whether the normalized path is directory or is located inside it."""
-    try:
-        return os.path.commonpath([directory, path]) == directory
-    except ValueError:
-        # paths on different drives
-        return False
 
 
 def _windows_extended_length_path(path: str) -> str:
@@ -110,6 +98,25 @@ def _windows_extended_length_path(path: str) -> str:
     return "\\\\?\\" + path
 
 
+def _windows_sanitize_path(path: str) -> str:
+    """Returns the normalized relative path with each component sanitized as Windows system tar
+    does: invalid characters are replaced with underscores, and the trailing dots and spaces
+    Windows strips from file names are removed. Extended-length paths are not normalized by
+    Windows, so this must be done explicitly."""
+    return os.sep.join(
+        c
+        if c in (os.curdir, os.pardir)
+        else (spack.util.path.sanitize_filename(c).rstrip(" .") or c)
+        for c in path.split(os.sep)
+    )
+
+
+def _windows_normalize_tar_name(name: str) -> str:
+    """Returns the name of a tar member as a sanitized, normalized path relative to the
+    destination, with Windows separators. Leading separators are stripped, as tar does."""
+    return _windows_sanitize_path(os.path.normpath(name.lstrip("/" + os.sep)))
+
+
 def _check_tar_member(member: tarfile.TarInfo, dest: str) -> None:
     """Raises if extracting the member would write outside of dest, or hard link to a file
     outside of dest.
@@ -120,10 +127,32 @@ def _check_tar_member(member: tarfile.TarInfo, dest: str) -> None:
     if member.islnk():
         paths.append(member.linkname)
     for path in paths:
-        if not _is_within(os.path.normpath(os.path.join(dest, path)), dest):
+        if not spack.util.filesystem.path_contains_subdirectory(os.path.join(dest, path), dest):
             raise SpackError(
                 f"Refusing to extract tar member {member.name}: {path} is outside of {dest}"
             )
+
+
+def _check_tar_member_parents(members: Dict[str, tarfile.TarInfo]) -> None:
+    """Raises if a member is located under a symlink member, as members are not extracted
+    through symlinks.
+
+    Args:
+        members: members of the tarball, by normalized and case-normalized name
+    """
+    symlinks = {key for key, member in members.items() if member.issym()}
+    if not symlinks:
+        return
+    for key, member in members.items():
+        parent = os.path.dirname(key)
+        while parent:
+            if parent in symlinks:
+                raise SpackError(
+                    f"Cannot extract tar member {member.name}: its parent directory "
+                    f"{members[parent].name} is a symlink in the archive, and extracting members "
+                    "through symlinks is not supported on Windows"
+                )
+            parent = os.path.dirname(parent)
 
 
 def _windows_create_tar_link(link: str, target: str, resolved: str, can_symlink: bool) -> None:
@@ -136,9 +165,6 @@ def _windows_create_tar_link(link: str, target: str, resolved: str, can_symlink:
         resolved: extended-length path of the target
         can_symlink: whether the current user can create symlinks
     """
-    # later archive members replace earlier ones, as with tar
-    if os.path.lexists(link):
-        os.unlink(link)
     if can_symlink:
         os.symlink(target, link, target_is_directory=os.path.isdir(resolved))
     elif os.path.isdir(resolved):
@@ -165,35 +191,63 @@ def _windows_create_tar_symlinks(symlinks: List[tarfile.TarInfo], dest: str) -> 
         symlinks: symlink members of the tarball
         dest: directory the tarball was extracted into
     """
+    if not symlinks:
+        return
     can_symlink = spack.util.filesystem._windows_can_symlink()
-    if symlinks and not can_symlink:
+    if not can_symlink:
         tty.debug("Cannot create symlinks, replacing symlinks with hard links and copies")
 
-    #: absolute path of each link -> (member name, target relative to the link's directory)
-    pending: Dict[str, Tuple[str, str]] = {}
+    #: absolute path of each link -> (member name, target relative to the link's directory,
+    #: absolute path of the target)
+    pending: Dict[str, Tuple[str, str, str]] = {}
+    #: number of pending links inside each directory, by case-normalized path
+    pending_inside: "collections.Counter[str]" = collections.Counter()
+    root = os.path.normcase(dest)
+
+    def ancestors(path: str):
+        """Yields the case-normalized directories containing path, up to and including dest"""
+        path = os.path.normcase(path)
+        while path != root and os.path.dirname(path) != path:
+            path = os.path.dirname(path)
+            yield path
+
+    def remove(link: str) -> Tuple[str, str, str]:
+        pending_inside.subtract(ancestors(link))
+        return pending.pop(link)
+
+    created_dirs = set()
     for member in symlinks:
         link = os.path.normpath(os.path.join(dest, member.name))
         # Windows does not resolve relative symlink targets with forward slashes
         target = os.path.normpath(member.linkname)
-        if not _is_within(os.path.normpath(os.path.join(os.path.dirname(link), target)), dest):
+        # A target with a drive, e.g. C:file.txt, is resolved from the current directory of the
+        # drive, and a rooted one from the root of the drive. Check before sanitizing the target
+        # to match the member names, which replaces the colon.
+        rooted = bool(os.path.splitdrive(target)[0]) or target.startswith(os.sep)
+        target = _windows_sanitize_path(target)
+        resolved = os.path.normpath(os.path.join(os.path.dirname(link), target))
+        if rooted or not spack.util.filesystem.path_contains_subdirectory(resolved, dest):
             tty.warn(
                 f"Skipping symlink {member.name} -> {member.linkname}: "
                 "target is outside of the archive"
             )
             continue
         # as with other members, the archive need not list the parent directories
-        os.makedirs(_windows_extended_length_path(os.path.dirname(link)), exist_ok=True)
-        pending[link] = (member.name, target)
+        parent = os.path.dirname(link)
+        if parent not in created_dirs:
+            os.makedirs(_windows_extended_length_path(parent), exist_ok=True)
+            created_dirs.add(parent)
+        pending[link] = (member.name, target, resolved)
+        pending_inside.update(ancestors(link))
 
-    progress = True
-    while pending and progress:
-        progress = False
-        for link, (_, target) in list(pending.items()):
-            resolved = os.path.normpath(os.path.join(os.path.dirname(link), target))
+    unresolved: Dict[str, Tuple[str, str, str]] = {}
+    while pending:
+        created = False
+        for link, (_, target, resolved) in list(pending.items()):
             # the target is missing, or is a symlink that is not created yet
             if not os.path.exists(_windows_extended_length_path(resolved)):
                 continue
-            if not can_symlink and any(_is_within(p, resolved) for p in pending):
+            if not can_symlink and pending_inside[os.path.normcase(resolved)] > 0:
                 continue
             _windows_create_tar_link(
                 _windows_extended_length_path(link),
@@ -201,18 +255,32 @@ def _windows_create_tar_symlinks(symlinks: List[tarfile.TarInfo], dest: str) -> 
                 _windows_extended_length_path(resolved),
                 can_symlink,
             )
-            del pending[link]
-            progress = True
+            remove(link)
+            created = True
+        if created:
+            continue
+        # No pending link can be created. Set aside the links that never can be, so they do not
+        # prevent copying the directories containing them: links whose target is missing, and
+        # links inside the directory they point to. If there are none, the remaining links are
+        # copies of directories containing each other.
+        stuck = [
+            link
+            for link, (_, _, resolved) in pending.items()
+            if not os.path.exists(_windows_extended_length_path(resolved))
+            or (
+                not can_symlink
+                and spack.util.filesystem.path_contains_subdirectory(
+                    os.path.normcase(link), os.path.normcase(resolved)
+                )
+            )
+        ]
+        for link in stuck or list(pending):
+            unresolved[link] = remove(link)
 
-    # The remaining links are dangling, cyclic, or (without symlinks) a link into a directory
-    # that contains it.
-    for link, (name, target) in pending.items():
+    for link, (name, target, _) in unresolved.items():
         if can_symlink:
-            # create them as tar does on other platforms
-            link = _windows_extended_length_path(link)
-            if os.path.lexists(link):
-                os.unlink(link)
-            os.symlink(target, link)
+            # dangling or cyclic links are created, as tar does on other platforms
+            os.symlink(target, _windows_extended_length_path(link))
         else:
             tty.warn(f"Skipping symlink {name} -> {target}: cannot create a hard link or copy")
 
@@ -220,10 +288,11 @@ def _windows_create_tar_symlinks(symlinks: List[tarfile.TarInfo], dest: str) -> 
 def _windows_untar(archive_file: str, remove_archive_file: bool = False) -> str:
     """Returns path to unarchived tar file. Untars archive via Python's tarfile module.
 
-    Windows system tar fails to extract symlinks without permission to create them, and fails to
-    create symlinks whose target is not extracted yet. MSYS tar does not handle Windows paths.
-    Instead, all members but symlinks are extracted first, and symlinks are created once their
-    targets exist.
+    Windows system tar fails to extract symlinks without permission to create them, fails to
+    create a symlink whose parent directory is not created yet, and creates a symlink to a
+    directory that is not extracted yet as a file symlink, which cannot be traversed. MSYS tar
+    does not handle Windows paths. Instead, all members but symlinks are extracted first, and
+    symlinks are created once their targets exist.
 
     Args:
         archive_file: absolute path to the archive to be extracted.
@@ -231,18 +300,26 @@ def _windows_untar(archive_file: str, remove_archive_file: bool = False) -> str:
     archive_file, outfile = _prepare_untar_input(archive_file)
     dest = os.getcwd()
     with tarfile.open(archive_file, "r") as tar:
-        members: List[tarfile.TarInfo] = []
-        symlinks: List[tarfile.TarInfo] = []
+        #: the last member of each name, by case-normalized name, as a later member replaces an
+        #: earlier one when extracted by tar. Ordered by the position of that last member.
+        latest: Dict[str, tarfile.TarInfo] = {}
         for member in tar:
             # Members are extracted with extended-length paths, which Windows does not normalize,
-            # so remove "." and ".." components and forward slashes from them.
-            member.name = os.path.normpath(member.name)
+            # so normalize and sanitize their names here.
+            member.name = _windows_normalize_tar_name(member.name)
             if member.islnk():
-                member.linkname = os.path.normpath(member.linkname)
+                member.linkname = _windows_normalize_tar_name(member.linkname)
             if member.name == os.curdir:
                 # the destination itself
                 continue
             _check_tar_member(member, dest)
+            key = os.path.normcase(member.name)
+            latest.pop(key, None)
+            latest[key] = member
+        _check_tar_member_parents(latest)
+        members: List[tarfile.TarInfo] = []
+        symlinks: List[tarfile.TarInfo] = []
+        for member in latest.values():
             (symlinks if member.issym() else members).append(member)
         # Use the extraction filter where available, which also strips unsafe permission bits
         extract_kwargs: Dict[str, Any] = {}
@@ -389,13 +466,9 @@ def _win_compressed_tarball_handler(decompressor: Callable[[str], str]) -> Calla
     and extraction method
     Decompress and extract compressed tarballs on Windows.
     This method uses a decompression method in conjunction with
-    the tar utility to perform decompression and extraction in
+    _windows_untar to perform decompression and extraction in
     a two step process first using decompressor to decompress,
-    and tar to extract.
-
-    The motivation for this method is Windows tar utility's lack
-    of access to the xz tool (unsupported natively on Windows) but
-    can be installed manually or via spack
+    and _windows_untar to extract.
     """
 
     def unarchive(archive_file: str):
