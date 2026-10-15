@@ -1647,20 +1647,28 @@ class TarballBuilder:
 
     #: write mode of the tarball by file extension. Typed as Any, as tarfile.open's type
     #: annotations require a literal mode.
-    _MODES: Dict[str, Any] = {".gz": "w:gz", ".tgz": "w:gz", ".bz2": "w:bz2", ".xz": "w:xz"}
+    _MODES: Dict[str, Any] = {
+        ".gz": "w:gz",
+        ".tgz": "w:gz",
+        ".bz2": "w:bz2",
+        ".tbz": "w:bz2",
+        ".tbz2": "w:bz2",
+        ".xz": "w:xz",
+        ".txz": "w:xz",
+    }
 
     def __init__(self, path: Path):
         self.path = path
-        self._members: List[Tuple[tarfile.TarInfo, Optional[bytes]]] = []
+        self._members: List[Tuple[tarfile.TarInfo, bytes]] = []
 
     def _add(
-        self, name: str, kind: bytes, mode: int, linkname: str = "", data: Optional[bytes] = None
+        self, name: str, kind: bytes, mode: int, linkname: str = "", data: bytes = b""
     ) -> "TarballBuilder":
         info = tarfile.TarInfo(name)
         info.type = kind
         info.mode = mode
         info.linkname = linkname
-        info.size = len(data) if data is not None else 0
+        info.size = len(data)
         self._members.append((info, data))
         return self
 
@@ -1683,7 +1691,7 @@ class TarballBuilder:
         """Writes the tarball and returns its path"""
         with tarfile.open(str(self.path), self._MODES.get(self.path.suffix, "w")) as tar:
             for info, data in self._members:
-                tar.addfile(info, io.BytesIO(data) if data else None)
+                tar.addfile(info, io.BytesIO(data))
         return str(self.path)
 
 

@@ -140,12 +140,14 @@ def symlinks_unavailable(monkeypatch):
     monkeypatch.setattr(spack.util.filesystem, "_windows_can_symlink", lambda: False)
 
 
-def _untar(archive: str, tmp_path: pathlib.Path, extension: str = "tar") -> pathlib.Path:
-    """Extracts the archive into a new directory, and returns the directory"""
+def _untar(archive, tmp_path: pathlib.Path, extension: str = "tar") -> pathlib.Path:
+    """Creates the tarball of a TarballBuilder, extracts it into a new directory, and returns the
+    directory"""
+    path = archive.create()
     dest = tmp_path / "extract"
     dest.mkdir()
     with working_dir(str(dest)):
-        compression.decompressor_for(archive, extension)(archive)
+        compression.decompressor_for(path, extension)(path)
     return dest
 
 
@@ -158,7 +160,7 @@ def test_windows_untar_does_not_use_system_tar(tmp_path, tarball, monkeypatch, e
         raise AssertionError("system tar should not be used")
 
     monkeypatch.setattr(compression, "_system_untar", _fail)
-    archive = tarball(f"Foo.{extension}").file("foo/bar.txt").create()
+    archive = tarball(f"Foo.{extension}").file("foo/bar.txt")
     dest = _untar(archive, tmp_path, extension)
     assert (dest / "foo" / "bar.txt").exists()
 
@@ -169,28 +171,31 @@ def test_windows_untar_symlink_target_with_forward_slashes(tmp_path, tarball):
     """Symlink targets are stored with forward slashes, which Windows does not resolve in a
     relative symlink, so they are converted. System tar converts them too."""
     archive = tarball("Foo.tar").file("foo/data/bar.txt").symlink("foo/link", "data/bar.txt")
-    dest = _untar(archive.create(), tmp_path)
+    dest = _untar(archive, tmp_path)
     assert os.readlink(dest / "foo" / "link") == os.path.join("data", "bar.txt")
 
 
 @pytest.mark.only_windows("Python tarball extraction is only used on Windows")
-@pytest.mark.usefixtures("symlinks_available")
-def test_windows_untar_symlink_listed_before_target(tmp_path, tarball):
-    """A symlink listed before its target is created once its target is extracted. System tar
-    fails to create it with "Invalid argument", as it requires the target to exist."""
-    archive = tarball("Foo.tar").symlink("foo/link", "bar.txt").file("foo/bar.txt", "bar")
-    dest = _untar(archive.create(), tmp_path)
-    assert (dest / "foo" / "link").read_text() == "bar"
+def test_windows_untar_symlink_in_directory_not_created_yet(tmp_path, tarball):
+    """A symlink extracted before any other member of its directory, in a tarball without
+    directory members, is created along with its parent directories. System tar fails to create
+    it with "Invalid argument", as it does not create the parent directories of a symlink. The
+    source tarball of conduit is laid out this way."""
+    archive = tarball("Foo.tar").file("foo/bar.txt", "bar").symlink("foo/sub/link", "../bar.txt")
+    dest = _untar(archive, tmp_path)
+    assert (dest / "foo" / "sub" / "link").read_text() == "bar"
 
 
 @pytest.mark.only_windows("Python tarball extraction is only used on Windows")
 @pytest.mark.usefixtures("symlinks_available")
 def test_windows_untar_directory_symlink_listed_before_target(tmp_path, tarball):
     """A symlink to a directory listed before the directory is created as a directory symlink,
-    rather than as a file symlink, which cannot be traversed. System tar fails to create it with
-    "Invalid argument", as it requires the target to exist."""
-    archive = tarball("Foo.tar").symlink("foo/link", "data").file("foo/data/bar.txt")
-    dest = _untar(archive.create(), tmp_path)
+    rather than as a file symlink, which cannot be traversed. System tar creates it as a file
+    symlink."""
+    archive = (
+        tarball("Foo.tar").directory("foo/").symlink("foo/link", "data").file("foo/data/bar.txt")
+    )
+    dest = _untar(archive, tmp_path)
     assert (dest / "foo" / "link" / "bar.txt").exists()
 
 
@@ -198,8 +203,8 @@ def test_windows_untar_directory_symlink_listed_before_target(tmp_path, tarball)
 @pytest.mark.usefixtures("symlinks_available")
 def test_windows_untar_dangling_symlink(tmp_path, tarball):
     """A symlink to a missing target is created, as tar does on other platforms. System tar
-    fails to create it with "Invalid argument"."""
-    archive = tarball("Foo.tar").symlink("foo/link", "missing.txt").create()
+    creates it too, as long as its parent directory exists."""
+    archive = tarball("Foo.tar").directory("foo/").symlink("foo/link", "missing.txt")
     dest = _untar(archive, tmp_path)
     assert os.path.islink(dest / "foo" / "link")
 
@@ -209,7 +214,7 @@ def test_windows_untar_dangling_symlink(tmp_path, tarball):
 def test_windows_untar_without_symlinks_file_symlink_is_hard_link(tmp_path, tarball):
     """Without permission to create symlinks, a symlink to a file becomes a hard link. System
     tar fails the extraction."""
-    archive = tarball("Foo.tar").file("foo/bar.txt").symlink("foo/link", "bar.txt").create()
+    archive = tarball("Foo.tar").file("foo/bar.txt").symlink("foo/link", "bar.txt")
     foo = _untar(archive, tmp_path) / "foo"
     assert os.path.samefile(foo / "link", foo / "bar.txt")
 
@@ -225,7 +230,7 @@ def test_windows_untar_without_symlinks_symlink_to_symlink(tmp_path, tarball):
         .symlink("foo/first", "bar.txt")
         .file("foo/bar.txt")
     )
-    foo = _untar(archive.create(), tmp_path) / "foo"
+    foo = _untar(archive, tmp_path) / "foo"
     assert os.path.samefile(foo / "second", foo / "bar.txt")
 
 
@@ -241,8 +246,26 @@ def test_windows_untar_without_symlinks_directory_symlink_is_copied(tmp_path, ta
         .symlink("foo/data/inner_link", "bar.txt")
         .file("foo/data/bar.txt")
     )
-    foo = _untar(archive.create(), tmp_path) / "foo"
+    foo = _untar(archive, tmp_path) / "foo"
     assert (foo / "link" / "inner_link").exists()
+
+
+@pytest.mark.only_windows("Python tarball extraction is only used on Windows")
+@pytest.mark.usefixtures("symlinks_unavailable")
+def test_windows_untar_without_symlinks_directory_with_dangling_symlink_is_copied(
+    tmp_path, tarball
+):
+    """Without permission to create symlinks, a symlink to a directory is copied even when the
+    directory contains a symlink that cannot be replaced, which is left out of the copy. System
+    tar fails the extraction."""
+    archive = (
+        tarball("Foo.tar")
+        .symlink("foo/link", "data")
+        .symlink("foo/data/dangling", "missing.txt")
+        .file("foo/data/bar.txt")
+    )
+    foo = _untar(archive, tmp_path) / "foo"
+    assert (foo / "link" / "bar.txt").exists()
 
 
 @pytest.mark.only_windows("Python tarball extraction is only used on Windows")
@@ -252,18 +275,23 @@ def test_windows_untar_without_symlinks_skips_uncopyable_symlinks(tmp_path, tarb
     """Without permission to create symlinks, a symlink to a missing target, or to the directory
     containing it, cannot be replaced by a hard link or copy, so it is skipped. System tar fails
     the extraction."""
-    archive = tarball("Foo.tar").directory("foo/").symlink("foo/link", target).create()
+    archive = tarball("Foo.tar").directory("foo/").symlink("foo/link", target)
     dest = _untar(archive, tmp_path)
     assert not os.path.lexists(dest / "foo" / "link")
 
 
 @pytest.mark.only_windows("Python tarball extraction is only used on Windows")
-@pytest.mark.parametrize("target", ["../../outside.txt", "/etc/passwd"])
+@pytest.mark.parametrize(
+    "target",
+    ["../../outside.txt", "/etc/passwd", "C:outside.txt"],
+    ids=["parent", "rooted", "drive-relative"],
+)
 def test_windows_untar_skips_symlinks_outside_destination(tmp_path, tarball, target):
     """A symlink pointing outside of the destination is skipped, rather than failing the
     extraction, as some source tarballs contain such links, e.g. to automake's files under
-    /usr/share. System tar fails to create it, as the target does not exist."""
-    archive = tarball("Foo.tar").directory("foo/").symlink("foo/link", target).create()
+    /usr/share. A drive-relative target is resolved from the current directory of the drive, so
+    it may point anywhere. System tar creates these symlinks."""
+    archive = tarball("Foo.tar").directory("foo/").symlink("foo/link", target)
     dest = _untar(archive, tmp_path)
     assert not os.path.lexists(dest / "foo" / "link")
 
@@ -282,20 +310,86 @@ def test_windows_untar_rejects_members_outside_destination(tmp_path, tarball, ad
     """A member written outside of the destination, or hard linking to a file outside of it,
     fails the extraction before anything is extracted. System tar skips such members with
     "Path contains '..'", but extracts the other members."""
-    archive = add_member(tarball("Foo.tar").file("foo/bar.txt")).create()
-    dest = tmp_path / "extract"
-    dest.mkdir()
-    with working_dir(str(dest)):
-        with pytest.raises(SpackError, match="Refusing to extract"):
-            compression.decompressor_for(archive, "tar")(archive)
-    assert not os.listdir(dest)
+    archive = add_member(tarball("Foo.tar").file("foo/bar.txt"))
+    with pytest.raises(SpackError, match="Refusing to extract"):
+        _untar(archive, tmp_path)
+    assert not os.listdir(tmp_path / "extract")
+
+
+@pytest.mark.only_windows("Python tarball extraction is only used on Windows")
+def test_windows_untar_rejects_members_under_symlinks(tmp_path, tarball):
+    """A member located under a symlink member fails the extraction before anything is
+    extracted, as members are not extracted through symlinks. System tar extracts the member
+    into the symlink's target."""
+    archive = (
+        tarball("Foo.tar")
+        .directory("foo/lib64/")
+        .symlink("foo/lib", "lib64")
+        .file("foo/lib/libfoo.so")
+    )
+    with pytest.raises(SpackError, match="is a symlink in the archive"):
+        _untar(archive, tmp_path)
+    assert not os.listdir(tmp_path / "extract")
+
+
+@pytest.mark.only_windows("Python tarball extraction is only used on Windows")
+@pytest.mark.parametrize(
+    "add_members,expected",
+    [
+        (lambda t: t.file("foo/x", "file").symlink("foo/x", "a.txt"), "a"),
+        (lambda t: t.symlink("foo/x", "a.txt").file("foo/x", "file"), "file"),
+        (lambda t: t.file("foo/x", "file").symlink("foo/X", "a.txt"), "a"),
+    ],
+    ids=["symlink-last", "file-last", "case-insensitive"],
+)
+def test_windows_untar_last_member_of_a_name_is_extracted(
+    tmp_path, tarball, add_members, expected
+):
+    """When several members have the same name, ignoring case, only the last is extracted, as
+    with system tar, where it replaces the earlier ones."""
+    archive = add_members(tarball("Foo.tar").file("foo/a.txt", "a"))
+    dest = _untar(archive, tmp_path)
+    assert (dest / "foo" / "x").read_text() == expected
+
+
+@pytest.mark.only_windows("Python tarball extraction is only used on Windows")
+def test_windows_untar_absolute_member_names(tmp_path, tarball):
+    """Leading separators are stripped from member names, so absolute members are extracted
+    into the destination, as with system tar."""
+    archive = tarball("Foo.tar").file("/foo/bar.txt")
+    dest = _untar(archive, tmp_path)
+    assert (dest / "foo" / "bar.txt").exists()
+
+
+@pytest.mark.only_windows("Python tarball extraction is only used on Windows")
+@pytest.mark.parametrize(
+    "name,expected",
+    [("notes.", "notes"), ("notes ", "notes"), ("a:b*c?.txt", "a_b_c_.txt")],
+    ids=["trailing-dot", "trailing-space", "invalid-characters"],
+)
+def test_windows_untar_sanitizes_member_names(tmp_path, tarball, name, expected):
+    """Member names are sanitized as Windows system tar does: invalid characters are replaced
+    with underscores, and trailing dots and spaces are removed, which Windows otherwise does
+    itself except for extended-length paths."""
+    archive = tarball("Foo.tar").file(f"foo/{name}")
+    dest = _untar(archive, tmp_path)
+    assert os.listdir(dest / "foo") == [expected]
+
+
+@pytest.mark.only_windows("Python tarball extraction is only used on Windows")
+def test_windows_untar_sanitizes_symlink_targets(tmp_path, tarball):
+    """Symlink targets are sanitized like member names, so they point to the sanitized
+    members."""
+    archive = tarball("Foo.tar").file("foo/notes.", "notes").symlink("foo/link", "notes.")
+    dest = _untar(archive, tmp_path)
+    assert (dest / "foo" / "link").read_text() == "notes"
 
 
 @pytest.mark.only_windows("Python tarball extraction is only used on Windows")
 def test_windows_untar_dot_prefixed_members(tmp_path, tarball):
     """Members prefixed with "./", as in tarballs created with ``tar -C dir .``, are extracted,
     though extraction uses extended-length paths, which Windows does not normalize."""
-    archive = tarball("Foo.tar").directory("./").file("./foo/bar.txt").create()
+    archive = tarball("Foo.tar").directory("./").file("./foo/bar.txt")
     dest = _untar(archive, tmp_path)
     assert (dest / "foo" / "bar.txt").exists()
 
@@ -305,7 +399,7 @@ def test_windows_untar_hard_link(tmp_path, tarball):
     """A hard link's target, stored with forward slashes, is converted so the link is created
     as a hard link rather than as a copy. System tar creates the hard link."""
     archive = tarball("Foo.tar").file("foo/data/bar.txt").hardlink("foo/link", "foo/data/bar.txt")
-    foo = _untar(archive.create(), tmp_path) / "foo"
+    foo = _untar(archive, tmp_path) / "foo"
     assert os.path.samefile(foo / "link", foo / "data" / "bar.txt")
 
 
@@ -314,7 +408,7 @@ def test_windows_untar_long_path(tmp_path, tarball):
     """Members whose path exceeds MAX_PATH are extracted, even when long paths are not enabled
     on the system. System tar uses extended-length paths too."""
     name = "/".join(["foo"] + ["d" * 50] * 6 + ["bar.txt"])
-    archive = tarball("Foo.tar").file(name).create()
+    archive = tarball("Foo.tar").file(name)
     path = str(_untar(archive, tmp_path) / name)
     assert len(path) > 260
     assert os.path.exists(compression._windows_extended_length_path(path))
