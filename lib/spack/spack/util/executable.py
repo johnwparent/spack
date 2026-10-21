@@ -374,11 +374,9 @@ def _win_is_exe(path: str) -> bool:
     ``os.access(path, os.X_OK)`` check on POSIX, which does not consult ACLs on Windows.
 
     Launching a program (or having ``cmd.exe`` run a batch script) needs both read and execute
-    access, so the file must be openable with both."""
+    access, so the current user must have both."""
     from spack.util.win_acl import FileAccessRights, has_file_access
 
-    # TODO: determine read/execute access from the file's ACL instead of by opening it, once
-    # spack.util.win_acl can evaluate the current user's effective access more robustly.
     return os.path.isfile(path) and has_file_access(
         path, FileAccessRights.FILE_READ_DATA | FileAccessRights.FILE_EXECUTE
     )

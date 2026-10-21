@@ -187,6 +187,12 @@ def test_windows_resolve_exe_requires_access(tmp_path: pathlib.Path, monkeypatch
     assert ex.resolve_exe(str(tmp_path / "script")) == str(tmp_path / "script.exe")
     assert ex.resolve_exe(unreadable) is None
 
+    # Access denied through a group, rather than to the user by name, is honored too
+    sd = SecurityDescriptor.from_file(unreadable)
+    sd.modify_ace(0, sid="WD")
+    sd.apply(unreadable)
+    assert ex.resolve_exe(unreadable) is None
+
 
 @pytest.fixture
 def make_script_exe(tmp_path: pathlib.Path):

@@ -12,6 +12,7 @@ if sys.platform != "win32":
     pytest.skip("Windows-only tests", allow_module_level=True)
 
 import spack.util.filesystem as fs
+import spack.util.win_acl as win_acl
 from spack.util.win_acl import (
     AccessControlEntry,
     AceFlags,
@@ -19,6 +20,8 @@ from spack.util.win_acl import (
     FileAccessRights,
     GenericAccessRights,
     SecurityDescriptor,
+    _access_check,
+    _can_open_file,
     copy_file_permissions,
     get_file_owner,
     get_file_sddl,
@@ -573,41 +576,63 @@ def test_copy_mode_only_changes_execute_on_windows(tmp_path):
     assert get_file_sddl(str(dst)) == before
 
 
-def _deny_current_user(path, rights):
-    """Prepend a Deny ACE for the current user to the DACL of *path*."""
-    sd = SecurityDescriptor.from_file(str(path))
-    sd.add_ace(
-        AccessControlEntry(
-            AceType.SDDL_ACCESS_DENIED, rights=rights, sid=SecurityDescriptor.get_sid_for_user()
-        ),
-        index=0,
-    )
-    sd.apply(str(path))
+_READ = FileAccessRights.FILE_READ_DATA
+_EXEC = FileAccessRights.FILE_EXECUTE
 
 
-def test_has_file_access(tmp_path):
-    """has_file_access reports what the OS lets the current process open, per right."""
-    _READ = FileAccessRights.FILE_READ_DATA
-    _EXEC = FileAccessRights.FILE_EXECUTE
+@pytest.mark.parametrize(
+    "dacl,can_read,can_exec",
+    [
+        # The current user is never named, only the groups it belongs to
+        (None, True, True),
+        ("D:P(A;;FRFX;;;AU)", True, True),
+        ("D:P(D;;0x1;;;WD)(A;;FA;;;AU)", False, True),
+        ("D:P(D;;0x20;;;WD)(A;;FA;;;AU)", True, False),
+        # Explicit Deny ACEs for the current user
+        ("D:P(D;;0x1;;;{user})(A;;FA;;;AU)", False, True),
+        ("D:P(D;;0x20;;;{user})(A;;FA;;;AU)", True, False),
+        # An Owner Rights ACE replaces the owner's implicit rights
+        ("D:P(D;;0x20;;;OW)(A;;FA;;;AU)", True, False),
+        ("D:P(A;;RC;;;OW)", False, False),
+    ],
+)
+def test_has_file_access(tmp_path, dacl, can_read, can_exec):
+    """has_file_access evaluates the current user's effective access to a file, and agrees with
+    what the OS lets the current process open."""
+    path = str(tmp_path / "file.exe")
+    open(path, "w", encoding="utf-8").close()
+    if dacl:
+        set_file_sddl(path, dacl.format(user=SecurityDescriptor.get_sid_for_user()))
 
-    plain = tmp_path / "plain.exe"
-    no_read = tmp_path / "no_read.exe"
-    no_exec = tmp_path / "no_exec.exe"
-    for path in (plain, no_read, no_exec):
-        path.touch()
-    _deny_current_user(no_read, _READ)
-    _deny_current_user(no_exec, _EXEC)
+    expectations = ((_READ, can_read), (_EXEC, can_exec), (_READ | _EXEC, can_read and can_exec))
+    for access, expected in expectations:
+        assert has_file_access(path, access) is expected
+        assert _can_open_file(path, access) is expected
 
-    assert has_file_access(str(plain), _READ | _EXEC)
 
-    assert not has_file_access(str(no_read), _READ)
-    assert has_file_access(str(no_read), _EXEC)
-    assert not has_file_access(str(no_read), _READ | _EXEC)
-
-    assert has_file_access(str(no_exec), _READ)
-    assert not has_file_access(str(no_exec), _EXEC)
-    assert not has_file_access(str(no_exec), _READ | _EXEC)
-
-    # missing files and directories cannot be opened as files
+def test_has_file_access_missing_and_directory(tmp_path):
     assert not has_file_access(str(tmp_path / "missing.exe"), _READ)
-    assert not has_file_access(str(tmp_path), _READ)
+    # For directories FILE_EXECUTE is the right to traverse
+    directory = tmp_path / "dir"
+    directory.mkdir()
+    assert has_file_access(str(directory), _READ | _EXEC)
+    set_file_sddl(str(directory), "D:P(D;;0x20;;;WD)(A;;FA;;;AU)")
+    assert not has_file_access(str(directory), _EXEC)
+
+
+def test_has_file_access_falls_back_without_read_control(tmp_path, monkeypatch):
+    """Without READ_CONTROL the security descriptor can't be read, so has_file_access asks the
+    OS to open the file instead."""
+    path = str(tmp_path / "file.exe")
+    open(path, "w", encoding="utf-8").close()
+    # FILE_READ_DATA | FILE_EXECUTE | SYNCHRONIZE, but not READ_CONTROL
+    set_file_sddl(path, "D:P(A;;0x100021;;;OW)")
+
+    with pytest.raises(PermissionError):
+        _access_check(path, _READ | _EXEC)
+    assert has_file_access(path, _READ | _EXEC)
+
+    probed = []
+    monkeypatch.setattr(win_acl, "_can_open_file", lambda p, a: probed.append(p) or False)
+    assert not has_file_access(path, _READ | _EXEC)
+    assert probed == [path]

@@ -16,7 +16,7 @@ Public API:
 - :class:`AccessControlEntry` -- a single ACE; built with the semantic enum types below and
   passed to :meth:`SecurityDescriptor.add_ace`.
 - :func:`get_file_owner` -- return the account name of the owner of a file.
-- :func:`has_file_access` -- whether the current process can open a file with given rights.
+- :func:`has_file_access` -- whether the current user has the given rights to a file.
 - :func:`copy_file_permissions` -- copy the DACL from one file to another.
 - :func:`get_file_sddl` / :func:`set_file_sddl` -- low-level SDDL string read/write;
   intended primarily (but not exclusively) for testing and debugging rather than general use.
@@ -391,7 +391,29 @@ class TOKEN_USER(ctypes.Structure):
     _fields_ = [("User", SID_AND_ATTRIBUTES)]
 
 
+class GENERIC_MAPPING(ctypes.Structure):
+    _fields_ = [
+        ("GenericRead", wintypes.DWORD),
+        ("GenericWrite", wintypes.DWORD),
+        ("GenericExecute", wintypes.DWORD),
+        ("GenericAll", wintypes.DWORD),
+    ]
+
+
+TOKEN_DUPLICATE = 0x0002
 TOKEN_QUERY = 0x0008
+
+_SECURITY_IDENTIFICATION = 1  # SECURITY_IMPERSONATION_LEVEL.SecurityIdentification
+_ERROR_INSUFFICIENT_BUFFER = 122
+_ERROR_NO_TOKEN = 1008
+
+# How the generic rights map onto specific rights for files, as AccessCheck requires.
+_FILE_GENERIC_MAPPING = GENERIC_MAPPING(
+    FileAccessRights.FILE_GENERIC_READ,
+    FileAccessRights.FILE_GENERIC_WRITE,
+    FileAccessRights.FILE_GENERIC_EXECUTE,
+    FileAccessRights.FILE_ALL_ACCESS,
+)
 
 
 _advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)  # type: ignore[attr-defined]
@@ -400,7 +422,7 @@ _WinError = ctypes.WinError  # type: ignore[attr-defined]
 _get_last_error = ctypes.get_last_error  # type: ignore[attr-defined]
 
 
-def _bind(dll: ctypes.WinDLL, name: str, argtypes: list, restype: type) -> Any:  # type: ignore[name-defined]
+def _bind(dll: ctypes.WinDLL, name: str, argtypes: list, restype: Optional[type]) -> Any:  # type: ignore[name-defined]
     """Set argtypes/restype on a DLL function and return it."""
     fn = getattr(dll, name)
     fn.argtypes = argtypes
@@ -463,6 +485,39 @@ _ConvertSecurityDescriptorToStringSecurityDescriptorW = _bind(
 _LocalFree = _bind(_kernel32, "LocalFree", [wintypes.HLOCAL], wintypes.HLOCAL)
 
 _GetCurrentProcess = _bind(_kernel32, "GetCurrentProcess", [], wintypes.HANDLE)
+
+_GetCurrentThread = _bind(_kernel32, "GetCurrentThread", [], wintypes.HANDLE)
+
+_OpenThreadToken = _bind(
+    _advapi32,
+    "OpenThreadToken",
+    [wintypes.HANDLE, wintypes.DWORD, wintypes.BOOL, _PHANDLE],
+    wintypes.BOOL,
+)
+
+_DuplicateToken = _bind(
+    _advapi32, "DuplicateToken", [wintypes.HANDLE, ctypes.c_int, _PHANDLE], wintypes.BOOL
+)
+
+_MapGenericMask = _bind(
+    _advapi32, "MapGenericMask", [_PDWORD, ctypes.POINTER(GENERIC_MAPPING)], None
+)
+
+_AccessCheck = _bind(
+    _advapi32,
+    "AccessCheck",
+    [
+        wintypes.LPVOID,
+        wintypes.HANDLE,
+        wintypes.DWORD,
+        ctypes.POINTER(GENERIC_MAPPING),
+        wintypes.LPVOID,
+        _PDWORD,
+        _PDWORD,
+        _PBOOL,
+    ],
+    wintypes.BOOL,
+)
 
 _CloseHandle = _bind(_kernel32, "CloseHandle", [wintypes.HANDLE], wintypes.BOOL)
 
@@ -1176,22 +1231,115 @@ def copy_file_permissions(src: str, dst: str) -> None:
     SecurityDescriptor.copy_permissions(src, dst)
 
 
-def has_file_access(path: str, access: int) -> bool:
-    """Return ``True`` if the current process can open *path* with the rights in *access*,
-    e.g. ``FileAccessRights.FILE_READ_DATA | FileAccessRights.FILE_EXECUTE``.
+@contextmanager
+def _identification_token() -> Generator[wintypes.HANDLE, None, None]:
+    """Yield an identification-level copy of the token the current thread acts with: its
+    impersonation token if it has one, otherwise the process token.  ``AccessCheck`` rejects
+    primary tokens, hence the copy.  Both handles are closed on exit."""
+    token = wintypes.HANDLE()
+    access = TOKEN_QUERY | TOKEN_DUPLICATE
+    if not _OpenThreadToken(_GetCurrentThread(), access, True, ctypes.byref(token)):
+        error = _get_last_error()
+        if error != _ERROR_NO_TOKEN:
+            raise _WinError(error)
+        if not _OpenProcessToken(_GetCurrentProcess(), access, ctypes.byref(token)):
+            raise _WinError(_get_last_error())
+    try:
+        duplicate = wintypes.HANDLE()
+        if not _DuplicateToken(token, _SECURITY_IDENTIFICATION, ctypes.byref(duplicate)):
+            raise _WinError(_get_last_error())
+        try:
+            yield duplicate
+        finally:
+            _CloseHandle(duplicate)
+    finally:
+        _CloseHandle(token)
 
-    This is the Windows counterpart of :func:`os.access`.  Rather than evaluating the DACL
-    itself, it asks the OS to open the file with the requested rights, so group membership,
-    deny-only SIDs, ownership and integrity levels are all accounted for.  The file is opened
-    and immediately closed, never read.  Returns ``False`` if the file cannot be opened for any
-    reason, including when it does not exist.
+
+def _access_check(path: str, access: int) -> bool:
+    """Whether the current user is granted every right in *access* to *path*, as evaluated by
+    Windows' ``AccessCheck`` against the file's security descriptor.
+
+    Raises:
+        OSError: if the security descriptor or the user's token cannot be obtained, e.g. when
+            the user lacks ``READ_CONTROL`` on *path* or it does not exist.
     """
+    SE_FILE_OBJECT = 1
+    OWNER_SECURITY_INFORMATION = 0x00000001
+    GROUP_SECURITY_INFORMATION = 0x00000002
+    DACL_SECURITY_INFORMATION = 0x00000004
+    LABEL_SECURITY_INFORMATION = 0x00000010
+    # The owner is needed for the owner's implicit rights and Owner Rights ACEs, and the
+    # mandatory label for integrity policy.  Unlike the rest of the SACL, the label is
+    # readable with READ_CONTROL alone.
+    security_info = (
+        OWNER_SECURITY_INFORMATION
+        | GROUP_SECURITY_INFORMATION
+        | DACL_SECURITY_INFORMATION
+        | LABEL_SECURITY_INFORMATION
+    )
+
+    desired = wintypes.DWORD(access)
+    _MapGenericMask(ctypes.byref(desired), ctypes.byref(_FILE_GENERIC_MAPPING))
+
+    with _local_ptr() as pp_sd, _identification_token() as token:
+        res = _GetNamedSecurityInfoW(
+            path, SE_FILE_OBJECT, security_info, None, None, None, None, ctypes.byref(pp_sd)
+        )
+        if res != 0:
+            raise _WinError(res)
+
+        granted = wintypes.DWORD()
+        status = wintypes.BOOL()
+        privileges_length = wintypes.DWORD(256)
+        for _ in range(2):
+            privileges = ctypes.create_string_buffer(privileges_length.value)
+            if _AccessCheck(
+                pp_sd,
+                token,
+                desired,
+                ctypes.byref(_FILE_GENERIC_MAPPING),
+                privileges,
+                ctypes.byref(privileges_length),
+                ctypes.byref(granted),
+                ctypes.byref(status),
+            ):
+                return bool(status)
+            error = _get_last_error()
+            # On this error privileges_length holds the size needed, so retry once with it
+            if error != _ERROR_INSUFFICIENT_BUFFER:
+                break
+        raise _WinError(error)
+
+
+def _can_open_file(path: str, access: int) -> bool:
+    """Whether the current process can open *path* with the rights in *access*.  The file is
+    opened and immediately closed, never read."""
     handle = _CreateFileW(path, access, _FILE_SHARE_ALL, None, _OPEN_EXISTING, 0, None)
     if handle is None or handle == _INVALID_HANDLE_VALUE:
         # The open failed, so there is no handle to close
         return False
     _CloseHandle(handle)
     return True
+
+
+def has_file_access(path: str, access: int) -> bool:
+    """Return ``True`` if the current user has all the rights in *access* to *path*,
+    e.g. ``FileAccessRights.FILE_READ_DATA | FileAccessRights.FILE_EXECUTE``.
+
+    This is the Windows counterpart of :func:`os.access`.  Windows itself evaluates the
+    security descriptor of *path* against the current user's token, so group membership,
+    deny-only SIDs, the owner's rights and the file's integrity label are all accounted for,
+    and the file is not opened.  For directories ``FILE_EXECUTE`` is the right to traverse.
+
+    If the security descriptor cannot be read (the user lacks ``READ_CONTROL``, which other
+    rights do not depend on), this falls back to opening *path* with *access* and closing it
+    again.  Returns ``False`` if *path* does not exist.
+    """
+    try:
+        return _access_check(path, access)
+    except OSError:
+        return _can_open_file(path, access)
 
 
 def get_file_sddl(path: str) -> str:
