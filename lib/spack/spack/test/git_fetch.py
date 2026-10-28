@@ -497,3 +497,77 @@ def test_commit_variant_clone(git, config, mutable_mock_repo, mock_git_version_i
     s.package.do_stage()
     with working_dir(s.package.stage.source_path):
         assert git("rev-parse", "HEAD", output=str, error=str).strip() == test_commit
+
+
+@pytest.fixture
+def nested_submodule_repo(git, tmp_path):
+    """A repo with submodule ``mid``, which itself has a submodule ``mid/leaf``."""
+    allow = ("-c", "protocol.file.allow=always")
+
+    def make_repo(name):
+        path = tmp_path / name
+        path.mkdir()
+        with working_dir(str(path)):
+            git("init", "-b", "main")
+            git("config", "user.name", "Spack")
+            git("config", "user.email", "spack@spack.io")
+            (path / "file").touch()
+            git("add", "file")
+            git("-c", "commit.gpgsign=false", "commit", "-m", "init")
+        return path
+
+    leaf, mid, top = make_repo("leaf"), make_repo("mid"), make_repo("top")
+    with working_dir(str(mid)):
+        git(*allow, "submodule", "add", str(leaf), "leaf")
+        git("-c", "commit.gpgsign=false", "commit", "-m", "add leaf")
+    with working_dir(str(top)):
+        git(*allow, "submodule", "add", str(mid), "mid")
+        git("-c", "commit.gpgsign=false", "commit", "-m", "add mid")
+
+    clone = tmp_path / "clone"
+    git(*allow, "clone", str(top), str(clone))
+    return clone, allow
+
+
+def _fetcher():
+    fetcher = GitFetchStrategy(git="unused")
+    fetcher.url = "unused"
+    return fetcher
+
+
+def test_check_submodules_populated(git, nested_submodule_repo):
+    clone, allow = nested_submodule_repo
+    fetcher = _fetcher()
+    with working_dir(str(clone)):
+        # Nothing was populated yet
+        with pytest.raises(spack.error.FetchError, match="mid"):
+            fetcher._check_submodules_populated([])
+
+        git(*allow, "submodule", "update", "--init", "--recursive")
+        fetcher._check_submodules_populated([])
+
+        # Simulate a silently failed nested clone
+        shutil.rmtree(str(clone / "mid" / "leaf"))
+        (clone / "mid" / "leaf").mkdir()
+        with pytest.raises(spack.error.FetchError, match="mid/leaf"):
+            fetcher._check_submodules_populated([])
+
+
+@pytest.mark.parametrize("nested", [False, True])
+def test_check_submodules_update_none(git, nested_submodule_repo, nested):
+    """Submodules marked ``update = none`` are never cloned, which is not a failure."""
+    clone, allow = nested_submodule_repo
+    fetcher = _fetcher()
+    with working_dir(str(clone)):
+        if nested:
+            git(*allow, "submodule", "update", "--init")
+            with working_dir(str(clone / "mid")):
+                git("config", "--file", ".gitmodules", "submodule.leaf.update", "none")
+            git("-C", "mid", *allow, "submodule", "update", "--init")
+            expected_missing = "mid/leaf"
+        else:
+            git("config", "--file", ".gitmodules", "submodule.mid.update", "none")
+            expected_missing = "mid"
+
+        assert expected_missing in git("submodule", "status", "--recursive", output=str)
+        fetcher._check_submodules_populated([])

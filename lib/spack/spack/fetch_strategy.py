@@ -1020,6 +1020,7 @@ class GitFetchStrategy(VCSFetchStrategy):
 
         # Init submodules if the user asked for them.
         git_commands = []
+        check_paths = []  # empty means all submodules, recursively
         submodules = self.submodules
         if callable(submodules):
             submodules = submodules(self.package)
@@ -1028,6 +1029,7 @@ class GitFetchStrategy(VCSFetchStrategy):
                     submodules = [submodules]
                 git_commands.append(["submodule", "init", "--"] + submodules)
                 git_commands.append(["submodule", "update", "--recursive"])
+                check_paths = submodules
         elif submodules:
             git_commands.append(["submodule", "update", "--init", "--recursive"])
 
@@ -1039,6 +1041,86 @@ class GitFetchStrategy(VCSFetchStrategy):
                 if not spack.config.CONFIG.get("config:debug"):
                     args.insert(1, "--quiet")
                 git(*args)
+
+            self._check_submodules_populated(check_paths)
+
+    def _check_submodules_populated(self, paths):
+        """Raise if any requested submodule was left unpopulated.
+
+        Git can exit successfully from ``submodule update`` even if a submodule clone failed, so
+        verify the result. Must be called from the source directory.
+
+        Args:
+            paths: submodule paths to check, or an empty list to check all submodules recursively.
+                Explicitly selected submodules are only checked themselves: their nested
+                submodules are not initialized when selecting by path.
+        """
+        recursive = [] if paths else ["--recursive"]
+        status = self.git("submodule", "status", *recursive, "--", *paths, output=str)
+        # A leading "-" means the submodule is not populated
+        missing = []
+        for line in status.splitlines():
+            match = re.match(r"-[0-9a-f]+ (.+)$", line)
+            if match:
+                missing.append(match.group(1).strip())
+        if not missing:
+            return
+
+        # Only on suspected failure: ignore submodules that are deliberately never cloned
+        disabled = self._update_disabled_submodules(missing)
+        missing = [path for path in missing if path not in disabled]
+        if missing:
+            raise spack.error.FetchError(
+                f"Failed to fetch git submodules: {', '.join(missing)}", self.url
+            )
+
+    def _update_disabled_submodules(self, paths):
+        """Return the subset of ``paths`` whose ``.gitmodules`` sets ``update = none``.
+
+        Paths are relative to the current directory (the superproject). Nested submodules are
+        declared in the ``.gitmodules`` of their parent submodule, not the superproject's, so
+        paths are grouped by parent directory to read each ``.gitmodules`` only once.
+        """
+        git = self.git
+        by_parent = {}
+        for path in paths:
+            by_parent.setdefault(os.path.dirname(path) or ".", []).append(path)
+
+        disabled = set()
+        configs = {}  # toplevel -> set of submodule paths with update = none
+        for parent, group in by_parent.items():
+            try:
+                toplevel = os.path.realpath(
+                    git("-C", parent, "rev-parse", "--show-toplevel", output=str).strip()
+                )
+            except (OSError, spack.error.SpackError):
+                continue
+
+            if toplevel not in configs:
+                config = git(
+                    "config",
+                    "--file",
+                    os.path.join(toplevel, ".gitmodules"),
+                    "--get-regexp",
+                    r"^submodule\..*\.(path|update)$",
+                    output=str,
+                    fail_on_error=False,
+                )
+                names_to_path, not_updated = {}, set()
+                for line in config.splitlines():
+                    key, _, value = line.partition(" ")
+                    name, _, option = key[len("submodule.") :].rpartition(".")
+                    if option == "path":
+                        names_to_path[name] = value.strip()
+                    elif value.strip() == "none":
+                        not_updated.add(name)
+                configs[toplevel] = {names_to_path[n] for n in not_updated if n in names_to_path}
+
+            for path in group:
+                relpath = os.path.relpath(os.path.realpath(path), toplevel).replace(os.sep, "/")
+                if relpath in configs[toplevel]:
+                    disabled.add(path)
+        return disabled
 
     @_needs_stage
     def reset(self):
